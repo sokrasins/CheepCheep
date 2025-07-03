@@ -54,6 +54,12 @@ status_t ws_init(char *url)
     return STATUS_OK;
 }
 
+status_t ws_deinit(void)
+{
+    esp_websocket_client_destroy(_ctx.client);
+    return STATUS_OK;  
+}
+
 status_t ws_open(void)
 {
     esp_websocket_client_start(_ctx.client);
@@ -86,6 +92,10 @@ status_t ws_send(cJSON *msg)
         DEBUG("sending: %s", pkt);
         esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
         return STATUS_OK;
+    }
+    else
+    {
+        DEBUG("Websocket not connected, skipping send");
     }
     return -STATUS_NO_RESOURCE;
 }
@@ -134,7 +144,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         } 
         else 
         {
-            INFO("Received=%.*s", data->data_len, (char *)data->data_ptr);
+            DEBUG("Received=%.*s", data->data_len, (char *)data->data_ptr);
         }
 
         // Try to parse a json payload. If we succeed, then send it to be parsed further.
@@ -150,7 +160,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         break;
 
     case WEBSOCKET_EVENT_ERROR:
-        INFO("Websocket Error");
+        ERROR("Websocket Error");
         ERROR("HTTP status code",  data->error_handle.esp_ws_handshake_status_code);
         if (data->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) 
         {
@@ -163,7 +173,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         break;
 
     case WEBSOCKET_EVENT_FINISH:
-        INFO("WEBSOCKET_EVENT_FINISH");
+        WARN("WEBSOCKET_EVENT_FINISH");
         // TODO: event here
         // this is sent from the server when the device successfully 
         // connects, but isn't authorized.

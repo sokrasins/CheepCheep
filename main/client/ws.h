@@ -14,6 +14,8 @@ typedef void (*ws_evt_cb_t)(ws_evt_t evt, cJSON *data, void *ctx);
 
 status_t ws_init(char *url);
 
+status_t ws_deinit(void);
+
 status_t ws_open(void);
 
 status_t ws_close(void);

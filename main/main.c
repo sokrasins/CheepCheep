@@ -26,6 +26,7 @@ const config_t *config;
 static status_t server_cmd_handler(msg_t *msg);
 
 static int _reboot(int argc, char **argv);
+static int _flash(int argc, char **argv);
 
 void app_main(void)
 {
@@ -46,6 +47,7 @@ void app_main(void)
     ota_mark_application(true);
 
     console_register("reboot", "reboot the device", NULL, _reboot);
+    console_register("flash", "enter bootloader to flash device", NULL, _flash);
 
     status = nvstate_init();
     if (status != STATUS_OK) { ERROR("nvstate_init failed: %d"); }
@@ -53,6 +55,8 @@ void app_main(void)
     INFO("Getting config");
     config = config_get();
     if (config == NULL) { ERROR("Couldn't get device config"); }
+
+    log_global_level_set(config->dev.log_level);
 
     INFO("Starting console");
     console_start();
@@ -141,5 +145,11 @@ static status_t server_cmd_handler(msg_t *msg)
 static int _reboot(int argc, char **argv)
 {
     sys_restart();
+    return 0;
+}
+
+static int _flash(int argc, char **argv)
+{
+    sys_enter_boot();
     return 0;
 }

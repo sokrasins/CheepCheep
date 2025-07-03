@@ -14,6 +14,8 @@ typedef void *net_evt_handle_t;
 
 status_t net_init(const config_network_t *config);
 
+status_t net_deinit(void);
+
 status_t net_start(void);
 
 status_t net_stop(void);

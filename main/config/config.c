@@ -358,22 +358,27 @@ int _set_log_level(int argc, char **argv)
         if (strcmp("error", argv[1]) == 0)
         {
             _config.dev.log_level = LOG_ERROR;
+            esp_log_level_set("*", ESP_LOG_ERROR);
         }
         else if (strcmp("warning", argv[1]) == 0)
         {
-            _config.dev.log_level = LOG_WARNING;        
+            _config.dev.log_level = LOG_WARNING;   
+            esp_log_level_set("*", ESP_LOG_WARN);     
         }
         else if (strcmp("info", argv[1]) == 0)
         {
             _config.dev.log_level = LOG_INFO;
+            esp_log_level_set("*", ESP_LOG_INFO); 
         }
         else if (strcmp("debug", argv[1]) == 0)
         {
             _config.dev.log_level = LOG_DEBUG;
+            esp_log_level_set("*", ESP_LOG_DEBUG); 
         }
         else if (strcmp("verbose", argv[1]) == 0)
         {
             _config.dev.log_level = LOG_VERBOSE;
+            esp_log_level_set("*", ESP_LOG_VERBOSE); 
         }
         else
         {

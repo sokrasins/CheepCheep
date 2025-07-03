@@ -25,6 +25,7 @@ typedef struct {
     EventGroupHandle_t wifi_event_group;
     int retry_num;
     esp_ip4_addr_t ip;
+    TaskHandle_t net_task_handle;
 } net_ctx_t;
 
 static net_ctx_t _ctx = {
@@ -68,12 +69,12 @@ status_t net_init(const config_network_t *config)
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&wifi_initiation);
 
-        esp_event_handler_instance_t instance_any_id;
+    // Run net task, ready to handle network state changes
+    xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, &_ctx.net_task_handle);
+
+    esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
 
-    // Run net task, ready to handle network state changes
-    xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, NULL);
-    
     // Register our event handler
     esp_event_handler_instance_register(
         WIFI_EVENT,
@@ -111,6 +112,34 @@ status_t net_init(const config_network_t *config)
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
 
     esp_wifi_set_ps(WIFI_PS_NONE);
+
+    return STATUS_OK;
+}
+
+status_t net_deinit(void)
+{
+    vTaskDelete(_ctx.net_task_handle);
+
+    esp_event_handler_instance_unregister(
+        WIFI_EVENT,
+        ESP_EVENT_ANY_ID,
+        &event_handler
+    );
+    esp_event_handler_instance_unregister(
+        IP_EVENT,
+        IP_EVENT_STA_GOT_IP,
+        &event_handler
+    );
+
+    xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, NULL);
+
+    esp_wifi_deinit();
+
+    vEventGroupDelete(_ctx.wifi_event_group);
+
+    esp_event_loop_delete_default();
+
+    esp_netif_deinit();
 
     return STATUS_OK;
 }

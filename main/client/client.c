@@ -3,6 +3,7 @@
 #include "ws.h"
 #include "net.h"
 #include "log.h"
+#include "bsp.h"
 
 #include <cJSON.h>
 #include "freertos/FreeRTOS.h"
@@ -173,9 +174,12 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
                 // Run a task to reset the connection. These calls 
                 // can't be done in this context, so a worker task 
                 // is run
-                ERROR("websocket reconnection has failed %d times, resetting connection", client_ctx->ws_fails);
-                client_ctx->ws_fails = 0;
-                xTaskCreate(client_reset_task, "Reset_Task", 4096, ctx, 5, &client_ctx->reset_task_handle);
+                //ERROR("websocket reconnection has failed %d times, resetting connection", client_ctx->ws_fails);
+                //client_ctx->ws_fails = 0;
+                //xTaskCreate(client_reset_task, "Reset_Task", 4096, ctx, 5, &client_ctx->reset_task_handle);
+                
+                // TODO: Find a more graceful way to hande this error 
+                sys_restart();
             }
 
             break;
@@ -284,6 +288,18 @@ void client_reset_task(void *params)
     INFO("Stopping network");
     status = net_stop();
     if (status != STATUS_OK) { ERROR("Couldn't stop the network"); }
+
+    INFO("Deinit socket");
+    status = ws_deinit();
+    if (status != STATUS_OK) { ERROR("Couldn't deinit the websocket"); }
+
+    INFO("Deinit network");
+    status = net_deinit();
+    if (status != STATUS_OK) { ERROR("Couldn't deinit the network"); }
+
+    // net init
+
+    // ws init
 
     INFO("Starting network");
     status = net_start();

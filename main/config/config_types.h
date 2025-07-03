@@ -1,6 +1,7 @@
 #ifndef CONFIG_TYPES_H_
 #define CONFIG_TYPES_H_
 
+#include "log.h"
 #include <stdbool.h>
 
 #define WIFI_POW_MAX 80
@@ -27,14 +28,6 @@ typedef enum {
     VENDING_HOLD,
     VENDING_TOGGLE,
 } vending_mode_t;
-
-typedef enum {
-    LOG_ERROR,
-    LOG_WARNING,
-    LOG_INFO,
-    LOG_DEBUG,
-    LOG_VERBOSE,
-} log_level_t;
 
 typedef struct {
     char ws_url[CONFIG_PORTAL_WS_URL_BYTES];

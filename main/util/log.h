@@ -9,4 +9,14 @@
 #define DEBUG(format, ...)   ESP_LOGD(__FILE__, format, ##__VA_ARGS__)
 #define VERBOSE(format, ...) ESP_LOGV(__FILE__, format, ##__VA_ARGS__)
 
+typedef enum {
+    LOG_ERROR,
+    LOG_WARNING,
+    LOG_INFO,
+    LOG_DEBUG,
+    LOG_VERBOSE,
+} log_level_t;
+
+void log_global_level_set(log_level_t level);
+
 #endif /*LOG_H_*/
