@@ -11,19 +11,26 @@
 #include <string.h>
 #include <assert.h>
 
-#define WIEG_MAX_HANDLERS 10U
-#define WIEG_TIMEOUT      20U //ms
+// Max number of event handlers allowed
+#define WIEG_MAX_HANDLERS   10U
+
+// If the parsing logic is waiting longer than this time, the card data is 
+// considered an error and thrown out
+#define WIEG_TIMEOUT        20U //ms
+
+#define WIEGAND_TASK_NAME   "Wiegand_Task" 
+#define WIEGAND_TASK_STACK  4096U
+#define WIEGAND_TASK_PRIO   2U
 
 typedef struct {
-    int num_swipes;
-    int num_bad_parity;
-    int num_timeout;
+    int num_swipes;     // Number of ttoal swipes. This counts swipes with bad parity, but not timeouts.
+    int num_bad_parity; // Number of swipes with a bad parity calculation
+    int num_timeout;    // Number of times the parsing logic times out waiting for another bit
 } wiegand_stats_t;
 
-// Types
 typedef enum {
-    PARITY_EVEN,
-    PARITY_ODD,
+    PARITY_EVEN,        // Total number of set bits is even (including parity)      
+    PARITY_ODD,         // Total number of set bits is odd (including parity)
 } parity_t;
 
 typedef struct {
@@ -39,7 +46,6 @@ typedef struct {
     wiegand_stats_t stats;
 } wieg_ctx_t;
 
-// Vars
 static wieg_ctx_t _ctx;
 
 // TODO: I'm dumb, i don't need this. Fix.
@@ -49,21 +55,21 @@ static const int bit_1 = 1;
 // Helpers
 void wieg_task(void *params);
 
-static bool wieg_is_card_valid(const wieg_fmt_t *fmt, uint32_t bits);
+static bool wieg_is_parity_good(const wieg_fmt_t *fmt, uint32_t bits);
 static void bits_to_card(const wieg_fmt_t *fmt, uint32_t bits, card_t *card);
 static bool parity(parity_t parity, uint32_t num);
 static void gpio_interrupt_handler(void *args);
 
 status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
 {
-    // TODO: Implement 34-bit mode
-    if (encode == WIEG_34_BIT)
+    // TODO: Implement 32-bit mode
+    if (encode == WIEG_32_BIT)
     {
-        ERROR("wiegand 34-bit mode not supported, reconfigure and reflash");
+        ERROR("wiegand 32-bit mode not supported");
         return -STATUS_UNIMPL;
     }
 
-    _ctx.fmt = encode == WIEG_26_BIT ? &wieg_fmt_26bit : &wieg_fmt_34bit;
+    _ctx.fmt = encode == WIEG_24_BIT ? &wieg_fmt_24bit : &wieg_fmt_32bit;
 
     for (int i=0; i<WIEG_MAX_HANDLERS; i++)
     {
@@ -72,7 +78,8 @@ status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
 
     memset(&_ctx.stats, 0, sizeof(wiegand_stats_t));
 
-    // Set up gpio
+    // Set up gpio. Wiegand signals begin with a negative edge, so detect those 
+    // for new bits
     gpio_set_direction(d0, GPIO_MODE_INPUT);
     gpio_set_pull_mode(d0, GPIO_FLOATING);
     gpio_set_intr_type(d0, GPIO_INTR_NEGEDGE);
@@ -81,13 +88,24 @@ status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
     gpio_set_pull_mode(d1, GPIO_FLOATING);
     gpio_set_intr_type(d1, GPIO_INTR_NEGEDGE);
 
+    // Set up the pin ISRs. The ctx provided defines the bit that each ISR adds 
+    // to the card data.
     gpio_install_isr_service(0);
     gpio_isr_handler_add(d0, gpio_interrupt_handler, (void *)&bit_0);
     gpio_isr_handler_add(d1, gpio_interrupt_handler, (void *)&bit_1);
 
     // Set up queue for new bits and start task
     _ctx.pin_q = xQueueCreate(_ctx.fmt->total_bits, sizeof(int));
-    xTaskCreate(wieg_task, "Wiegand_Task", 4096, &_ctx, 1, NULL);
+    
+    // Make task
+    xTaskCreate(
+        wieg_task, 
+        WIEGAND_TASK_NAME, 
+        WIEGAND_TASK_STACK, 
+        &_ctx, 
+        WIEGAND_TASK_PRIO, 
+        NULL
+    );
 
     return STATUS_OK;
 }
@@ -127,6 +145,8 @@ status_t wieg_evt_handler_dereg(wieg_evt_handle_t handle)
 
 void wieg_task(void *params)
 {
+    assert(params);
+
     wieg_ctx_t *ctx = (wieg_ctx_t *) params;
     int ptr = ctx->fmt->total_bits - 1;
     uint32_t bits = 0;
@@ -148,9 +168,9 @@ void wieg_task(void *params)
                 ctx->stats.num_swipes++;
 
                 // Verify card data
-                if (wieg_is_card_valid(ctx->fmt, bits))
+                if (wieg_is_parity_good(ctx->fmt, bits))
                 {
-                    // Derive card
+                    // Card data is valid, format bits into readable card data
                     bits_to_card(ctx->fmt, bits, &card);
 
                     // Fire NEWCARD events
@@ -168,7 +188,7 @@ void wieg_task(void *params)
                 }
                 else
                 {
-                    // Report bad scan
+                    // Parity check failed, report bad scan
                     ctx->stats.num_bad_parity++;
                     ERROR("New swipe fails parity check: %d", bits);
                 }
@@ -182,8 +202,7 @@ void wieg_task(void *params)
         }
         else
         {
-            // Timeout before we got all the bits
-            // Clear and start over
+            // Timeout before we got all the bits. Clear and start over
             bits = 0;
             ptr = ctx->fmt->total_bits - 1;
         }
@@ -192,28 +211,35 @@ void wieg_task(void *params)
 
 static void bits_to_card(const wieg_fmt_t *fmt, uint32_t bits, card_t *card)
 {
+    assert(card);
+
     card->raw = 0;
     card->user_id = (uint16_t) ((bits & fmt->uid_mask) >> fmt->uid_offset);
     card->facility = (uint16_t) ((bits & fmt->fac_mask) >> fmt->fac_offset);
 }
 
-static bool wieg_is_card_valid(const wieg_fmt_t *fmt, uint32_t bits)
+static bool wieg_is_parity_good(const wieg_fmt_t *fmt, uint32_t bits)
 {
-    // calc parity 1
+    assert(fmt);
+
+    // Calc high parity (which is always even)
     uint64_t high = bits & fmt->high_mask;
     bool high_parity = parity(PARITY_EVEN, high);
-    if (WIEG_HIGH_PARITY_BIT(fmt, bits) != high_parity) return false;
+    if (WIEG_HIGH_PARITY_BIT(fmt, bits) != high_parity) { return false; }
 
-    // calc parity 2
+    // calc low parity (which is always odd)
     uint64_t low = bits & fmt->low_mask;
     bool low_parity = parity(PARITY_ODD, low);
-    if (WIEG_LOW_PARITY_BIT(fmt, bits) != low_parity) return false;
+    if (WIEG_LOW_PARITY_BIT(fmt, bits) != low_parity) { return false; }
 
     return true;
 }
 
 static bool parity(parity_t parity, uint32_t num)
 {
+    // By setting the initial value, the parity calculation can be either:
+    // - even: initialize with 0
+    // - odd: initialize with 1
     bool p = (bool) parity;
     for (int i=0; i<32; i++)
     {
@@ -222,8 +248,15 @@ static bool parity(parity_t parity, uint32_t num)
     return p;
 }
 
+// IRAM keeps this ISR clear from flash, which lets this ISR fire when flash 
+// reads/writes happen
 static void IRAM_ATTR gpio_interrupt_handler(void *args)
 {
+    assert(args);
+    
+    // The context tells us whether the bit was triggered from d0 or d1, and 
+    // this which bit to add. Since the bit is encpded in args, pass it through 
+    // the queue to the parsing task.
     BaseType_t wake_high_prio = pdFALSE;
     xQueueSendFromISR(_ctx.pin_q, args, &wake_high_prio);
 }
