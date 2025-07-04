@@ -59,16 +59,16 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
 {
     door_ctx_t *door_ctx = (door_ctx_t *) ctx;
 
-    INFO("New card");
+    WARN("New card: %d", card->raw);
     INFO("    facility: 0x%hx", card->facility);
     INFO("    user id:  0x%hx", card->user_id);
-    INFO("    raw:      %d", card->raw);
 
     signal_cardread();
 
     // Consider doin this in a task
     if (tags_verify(card->raw) == STATUS_OK)
     {
+        WARN("Access granted");
         if (nvstate_locked_out())
         {
             msg_t msg = {
@@ -90,6 +90,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
     }
     else
     {
+        WARN("Access denied");
         msg_t msg = {
             .type = MSG_ACCESS_DENIED,
             .access_denied.card_id = card->raw,

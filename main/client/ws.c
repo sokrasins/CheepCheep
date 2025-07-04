@@ -89,13 +89,13 @@ status_t ws_send(cJSON *msg)
     if (_ctx.connected)
     {
         char *pkt = cJSON_PrintUnformatted(msg);
-        DEBUG("sending: %s", pkt);
+        INFO("=> %.*s", strlen(pkt), pkt);
         esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
         return STATUS_OK;
     }
     else
     {
-        DEBUG("Websocket not connected, skipping send");
+        INFO("Websocket not connected, skipping send");
     }
     return -STATUS_NO_RESOURCE;
 }
@@ -144,7 +144,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         } 
         else 
         {
-            DEBUG("Received=%.*s", data->data_len, (char *)data->data_ptr);
+            INFO("<= %.*s", data->data_len, (char *)data->data_ptr);
         }
 
         // Try to parse a json payload. If we succeed, then send it to be parsed further.

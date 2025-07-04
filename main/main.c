@@ -56,7 +56,7 @@ void app_main(void)
     config = config_get();
     if (config == NULL) { ERROR("Couldn't get device config"); }
 
-    log_global_level_set(config->dev.log_level);
+    //log_global_level_set(config->dev.log_level);
 
     INFO("Starting console");
     console_start();
