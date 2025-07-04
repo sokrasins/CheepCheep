@@ -34,10 +34,18 @@ status_t ota_dfu_init(const config_dfu_t *config)
     _ctx.config = config;
     memset(_ctx.ota_write_data, 0, DFU_BUFFSIZE+1);
 
+    // Check if ota dfu is enabled. If not, return before we set the network event handler.
+    if (!_ctx.config->enabled)
+    {
+        INFO("OTA DFU disabled, skipping check");
+        return STATUS_OK;
+    }
+
+    // If DFU is enabled and no server url is specified then it's an error
     if (strlen(_ctx.config->url) == 0)
     {
-        INFO("No DFU server URL provided in the config, skipping check for new firmware");
-        return STATUS_OK;
+        ERROR("No DFU server URL provided in the config, skipping check for new firmware");
+        return -STATUS_BAD_CONFIG;
     }
 
     // Register connection CB with net, this will queue 

@@ -31,6 +31,10 @@
 #define CONFIG_PORTAL_WS_URL ""
 #endif /*CONFIG_PORTAL_WS_URL*/
 
+#ifndef CONFIG_DFU_ENABLED
+#define CONFIG_DFU_ENABLED false
+#endif /*CONFIG_DFU_URL*/
+
 #ifndef CONFIG_DFU_URL
 #define CONFIG_DFU_URL ""
 #endif /*CONFIG_DFU_URL*/

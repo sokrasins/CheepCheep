@@ -15,6 +15,7 @@ const config_t _defaults = {
             .wifi_power = CONFIG_NET_WIFI_TX_POWER,
         },
         .dfu = {
+            .enabled = CONFIG_DFU_ENABLED,
             .url = CONFIG_DFU_URL,
             .skip_cn_check = CONFIG_DFU_SKIP_CN_CHECK,
             .skip_version_check = CONFIG_DFU_SKIP_VERSION_CHECK,

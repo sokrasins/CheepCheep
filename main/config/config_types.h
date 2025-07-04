@@ -42,6 +42,7 @@ typedef struct {
 } config_network_t;
 
 typedef struct {
+    bool enabled;
     char url[CONFIG_DFU_URL_BYTES];
     bool skip_cn_check;
     bool skip_version_check;
