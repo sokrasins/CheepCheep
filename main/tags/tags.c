@@ -55,7 +55,7 @@ status_t tags_verify(uint32_t card)
     while (status != -STATUS_EOF) 
     {
         uint32_t db_card = atoi(card_str);
-        if (db_card == raw)
+        if (db_card == card)
         {
             // Be kind
             fs_rewind(tag_file);

@@ -41,22 +41,21 @@ typedef struct {
 
 typedef struct {
     handlers_t handlers[WIEG_MAX_HANDLERS];
-    const wieg_fmt_t *fmt;
+    const wieg_fmt_desc_t *fmt;
     QueueHandle_t pin_q;
     wiegand_stats_t stats;
 } wieg_ctx_t;
 
 static wieg_ctx_t _ctx;
 
-// TODO: I'm dumb, i don't need this. Fix.
 static const int bit_0 = 0;
 static const int bit_1 = 1;
 
 // Helpers
 void wieg_task(void *params);
 
-static bool wieg_is_parity_good(const wieg_fmt_t *fmt, uint32_t bits);
-static void bits_to_card(const wieg_fmt_t *fmt, uint32_t bits, card_t *card);
+static bool wieg_is_parity_good(const wieg_fmt_desc_t *fmt, uint32_t bits);
+static void bits_to_card(const wieg_fmt_desc_t *fmt, uint32_t bits, card_t *card);
 static bool parity(parity_t parity, uint32_t num);
 static void gpio_interrupt_handler(void *args);
 
@@ -209,7 +208,7 @@ void wieg_task(void *params)
     }
 }
 
-static void bits_to_card(const wieg_fmt_t *fmt, uint32_t bits, card_t *card)
+static void bits_to_card(const wieg_fmt_desc_t *fmt, uint32_t bits, card_t *card)
 {
     assert(card);
 
@@ -218,7 +217,7 @@ static void bits_to_card(const wieg_fmt_t *fmt, uint32_t bits, card_t *card)
     card->facility = (uint16_t) ((bits & fmt->fac_mask) >> fmt->fac_offset);
 }
 
-static bool wieg_is_parity_good(const wieg_fmt_t *fmt, uint32_t bits)
+static bool wieg_is_parity_good(const wieg_fmt_desc_t *fmt, uint32_t bits)
 {
     assert(fmt);
 
@@ -253,7 +252,7 @@ static bool parity(parity_t parity, uint32_t num)
 static void IRAM_ATTR gpio_interrupt_handler(void *args)
 {
     assert(args);
-    
+
     // The context tells us whether the bit was triggered from d0 or d1, and 
     // this which bit to add. Since the bit is encpded in args, pass it through 
     // the queue to the parsing task.

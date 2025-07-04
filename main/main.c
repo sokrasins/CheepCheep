@@ -75,7 +75,7 @@ void app_main(void)
         status = wieg_init(
             config->pins.wiegand_zero, 
             config->pins.wiegand_one, 
-            config->general.uid_32bit_mode ? WIEG_34_BIT : WIEG_26_BIT
+            config->general.uid_32bit_mode ? WIEG_32_BIT : WIEG_24_BIT
         );
         if (status != STATUS_OK) { ERROR("wieg_init failed: %d"); }
     }
