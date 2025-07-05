@@ -4,6 +4,7 @@
 #include "config_types.h"
 #include "status.h"
 #include <stdbool.h>
+#include <string.h>
 
 const config_t *config_get(void);
 

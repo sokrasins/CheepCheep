@@ -189,7 +189,7 @@ void wieg_task(void *params)
                 {
                     // Parity check failed, report bad scan
                     ctx->stats.num_bad_parity++;
-                    ERROR("New swipe fails parity check: %d", bits);
+                    ERROR("New swipe fails parity check: %lu", bits);
                 }
 
                 // Clear data to prepare for new card

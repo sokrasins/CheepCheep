@@ -161,12 +161,12 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
 
     case WEBSOCKET_EVENT_ERROR:
         ERROR("Websocket Error");
-        ERROR("HTTP status code",  data->error_handle.esp_ws_handshake_status_code);
+        ERROR("HTTP status code: %d",  data->error_handle.esp_ws_handshake_status_code);
         if (data->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) 
         {
-            ERROR("reported from esp-tls", data->error_handle.esp_tls_last_esp_err);
-            ERROR("reported from tls stack", data->error_handle.esp_tls_stack_err);
-            ERROR("captured as transport's socket errno",  data->error_handle.esp_transport_sock_errno);
+            ERROR("reported from esp-tls %d", data->error_handle.esp_tls_last_esp_err);
+            ERROR("reported from tls stack %d", data->error_handle.esp_tls_stack_err);
+            ERROR("captured as transport's socket errno %d",  data->error_handle.esp_transport_sock_errno);
         }
 
         //sys_restart();
