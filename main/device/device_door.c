@@ -59,7 +59,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
 {
     door_ctx_t *door_ctx = (door_ctx_t *) ctx;
 
-    WARN("New card: %d", card->raw);
+    WARN("New card: %lu", card->raw);
     INFO("    facility: 0x%hx", card->facility);
     INFO("    user id:  0x%hx", card->user_id);
 
