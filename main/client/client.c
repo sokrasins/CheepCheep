@@ -10,17 +10,20 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#define CLIENT_CMD_HANDLER_MAX  10U
+#define CLIENT_CMD_HANDLER_MAX      10U
 
 // The server starts to send unparsable messages when the period is 10s
-#define CLIENT_PING_PERIOD      9U //s
+#define CLIENT_PING_PERIOD          9U //s
 
-// Number of websocket reconnection attempts to tolerate before resetting the 
-// network
-#define CLIENT_WS_FAIL_LIMIT    3U
+// Number of seconds to tolerate after a websocket disconnection before 
+// forcibly reconnecting. The WS will do some auto-reconnecting attempts, so 
+// this time gives the automated mechanism a few chances before the client 
+// intervenes.
+#define CLIENT_WS_RECONNECT_TIMEOUT 50U //s
 
 // Event handlers
 static void client_ping_timer_cb(TimerHandle_t xTimer);
+static void client_reconnect_timer_cb(TimerHandle_t xTimer);
 static void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx);
 static void net_evt_cb(net_evt_t evt, void *ctx);
 status_t client_msg_handler(msg_t *msg);
@@ -32,8 +35,8 @@ void client_reset_task(void *params);
 typedef struct {
     const config_portal_t *config;
     TimerHandle_t ping_timer;
+    TimerHandle_t reconnect_timer;
     client_cmd_handler_t handlers[CLIENT_CMD_HANDLER_MAX];
-    int ws_fails;
     TaskHandle_t reset_task_handle;
 } client_ctx_t;
 
@@ -44,7 +47,6 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     status_t status; 
 
     _ctx.config = &config->portal;
-    _ctx.ws_fails = 0;
 
     if (strlen(_ctx.config->api_secret) == 0)
     {
@@ -74,6 +76,17 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     );
     if (_ctx.ping_timer == NULL) { return -STATUS_NOMEM; }
 
+    // Create reconnection timer - Checks if reconnection does not occur within 
+    // the timer length, the system is reset.
+    _ctx.reconnect_timer = xTimerCreate(
+        "Reconnect_Timer", 
+        pdMS_TO_TICKS(1000 * CLIENT_WS_RECONNECT_TIMEOUT), 
+        false, 
+        NULL, 
+        client_reconnect_timer_cb
+    );
+    if (_ctx.reconnect_timer == NULL) { return -STATUS_NOMEM; }
+
     // Build the uri for the websocket server
     status = net_init(&config->net);
 
@@ -90,8 +103,6 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
     net_evt_cb_register(NET_EVT_CONNECT, (void *)&_ctx, net_evt_cb);
     net_evt_cb_register(NET_EVT_DISCONNECT, (void *)&_ctx, net_evt_cb);
-
-    // status led off
 
     return STATUS_OK;
 }
@@ -133,6 +144,19 @@ static void client_ping_timer_cb(TimerHandle_t xTimer)
     client_send_msg(&msg);
 }
 
+static void client_reconnect_timer_cb(TimerHandle_t xTimer)
+{
+    // Run a task to reset the connection. These calls 
+    // can't be done in this context, so a worker task 
+    // is run
+    //ERROR("websocket reconnection has failed %d times, resetting connection", client_ctx->ws_fails);
+    //client_ctx->ws_fails = 0;
+    //xTaskCreate(client_reset_task, "Reset_Task", 4096, ctx, 5, &client_ctx->reset_task_handle);
+                
+    // TODO: Find a more graceful way to hande this error 
+    sys_restart();
+}
+
 static void net_evt_cb(net_evt_t evt, void *ctx)
 {
     if (evt == NET_EVT_DISCONNECT)
@@ -152,8 +176,12 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     switch (evt)
     {
         case WS_OPEN: {
-            // Websocket good now, we can stop counting consecutive failures
-            client_ctx->ws_fails = 0;
+            // Websocket good now, we can stop the reconnect timer
+            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdTRUE)
+            {
+                INFO("Stopping reconnection timer");
+                xTimerStop(_ctx.reconnect_timer, portMAX_DELAY);
+            }
 
             // Send authentication request
             msg_t msg = {
@@ -166,22 +194,14 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
 
         case WS_CLOSE:
             // The websocket will attempt to automatically reconnect. 
-            // We only need to intervene if this happens repeatedly.
+            // Start the reconnection timer to makle sure the websocket 
+            // reconnects after a while. If not, then we need to manually reconnect.
             ERROR("Client lost websocket connection");
-            client_ctx->ws_fails++;
-            if (client_ctx->ws_fails > CLIENT_WS_FAIL_LIMIT)
+            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
             {
-                // Run a task to reset the connection. These calls 
-                // can't be done in this context, so a worker task 
-                // is run
-                //ERROR("websocket reconnection has failed %d times, resetting connection", client_ctx->ws_fails);
-                //client_ctx->ws_fails = 0;
-                //xTaskCreate(client_reset_task, "Reset_Task", 4096, ctx, 5, &client_ctx->reset_task_handle);
-                
-                // TODO: Find a more graceful way to hande this error 
-                sys_restart();
+                INFO("Starting reconnection timer");
+                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
             }
-
             break;
 
         case WS_MSG:

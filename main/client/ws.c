@@ -168,8 +168,6 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
             ERROR("reported from tls stack %d", data->error_handle.esp_tls_stack_err);
             ERROR("captured as transport's socket errno %d",  data->error_handle.esp_transport_sock_errno);
         }
-
-        //sys_restart();
         break;
 
     case WEBSOCKET_EVENT_FINISH:

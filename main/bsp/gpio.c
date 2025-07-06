@@ -63,6 +63,7 @@ status_t gpio_init(const config_pins_t *pins, const config_general_t *gen)
     gpio_out_set(OUTPUT_READER_BUZZER, false);
     gpio_out_set(OUTPUT_READER_LED, false);
     gpio_out_set(OUTPUT_LOCK, false);
+    gpio_out_set(OUTPUT_RELAY, false);
     
     return STATUS_OK;
 }
