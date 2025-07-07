@@ -13,6 +13,7 @@ int _set_wifi_ssid(int argc, char **argv);
 int _set_wifi_pass(int argc, char **argv);
 int _set_api_secret(int argc, char **argv);
 int _set_api_url(int argc, char **argv);
+int _set_dfu_en(int argc, char **argv);
 int _set_dfu_url(int argc, char **argv);
 int _set_ilock_url(int argc, char **argv);
 int _set_ilock_user(int argc, char **argv);
@@ -62,6 +63,7 @@ status_t config_init(void)
     console_register("country", "set wifi country code", NULL, _set_wifi_country);
 
     // client.dfu
+    console_register("dfu_enable", "enable/disable dfu", NULL, _set_dfu_en);
     console_register("dfu_url", "set dfu url", NULL, _set_dfu_url);
     console_register("dfu_skip_cn", "skip common name verification for DFU server", NULL, _set_dfu_skipcncheck);
     console_register("dfu_skip_ver", "skip version check during DFU", NULL, _set_dfu_skipvercheck);
@@ -553,4 +555,15 @@ int _set_32bit_mode(int argc, char **argv)
         nvstate_config_set(&_config);
     }
     return 0; 
+}
+
+int _set_dfu_en(int argc, char **argv)
+{
+    if (argc == 2)
+    {
+        printf("Setting DFU enable\n");
+        _config.client.dfu.enabled = (bool) atoi(argv[1]);
+        nvstate_config_set(&_config);
+    }
+    return 0;     
 }
