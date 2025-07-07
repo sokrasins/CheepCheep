@@ -50,7 +50,7 @@ void app_main(void)
     console_register("flash", "enter bootloader to flash device", NULL, _flash);
 
     status = nvstate_init();
-    if (status != STATUS_OK) { ERROR("nvstate_init failed: %d"); }
+    if (status != STATUS_OK) { ERROR("nvstate_init failed: %ld", status); }
 
     INFO("Getting config");
     config = config_get();
@@ -63,11 +63,11 @@ void app_main(void)
 
     INFO("Setting up gpio");
     status = gpio_init(&config->pins, &config->general);
-    if (status != STATUS_OK) { ERROR("gpio_init failed: %d"); }
+    if (status != STATUS_OK) { ERROR("gpio_init failed: %ld", status); }
 
     INFO("Setting up storage");
     status = fs_init();
-    if (status != STATUS_OK) { ERROR("fs_init failed: %d"); }
+    if (status != STATUS_OK) { ERROR("fs_init failed: %ld", status); }
 
     if (config->general.wiegand_enabled)
     {
@@ -77,7 +77,7 @@ void app_main(void)
             config->pins.wiegand_one, 
             config->general.uid_32bit_mode ? WIEG_32_BIT : WIEG_24_BIT
         );
-        if (status != STATUS_OK) { ERROR("wieg_init failed: %d"); }
+        if (status != STATUS_OK) { ERROR("wieg_init failed: %ld", status); }
     }
     else
     {
@@ -92,7 +92,7 @@ void app_main(void)
 
     INFO("Setting up authorized tag db");
     status = tags_init();
-    if (status != STATUS_OK) { ERROR("tags_init failed: %d"); }
+    if (status != STATUS_OK) { ERROR("tags_init failed: %ld", status); }
 
     switch(config->device_type) {
         case DEVICE_DOOR:
@@ -111,12 +111,12 @@ void app_main(void)
             break;
 
         default:
-            ERROR("Invalid device specified: %d.\nCheck configuration and reflash.");
+            ERROR("Invalid device specified: %d.\nCheck configuration and reflash.", config->device_type);
     }
 
     INFO("Initializing device");
     status = device->init(config);
-    if (status != STATUS_OK) { ERROR("device init failed: %d"); }
+    if (status != STATUS_OK) { ERROR("device init failed: %lu", status); }
 
     while(1)
     {
