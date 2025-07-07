@@ -4,14 +4,22 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include <assert.h>
+
+// Event flags
 #define SIGNAL_OK_FLAG          (1<<0)
 #define SIGNAL_ALERT_FLAG       (1<<1)
 #define SIGNAL_CARDREAD_FLAG    (1<<2)
 #define SIGNAL_ACTION_FLAG      (1<<3)
 
+// Signal timing
 #define SIGNAL_OK_TIME          1000U //ms
 #define SIGNAL_ALERT_TIME       300U //ms
 #define SIGNAL_CARDREAD_TIME    200U //ms
+
+#define SIGNAL_TASK_NAME "Signal_Task"
+#define SIGNAL_TASK_STACK   2048U
+#define SIGNAL_TASK_PRIO    2U
 
 void signal_task(void *params);
 
@@ -20,24 +28,41 @@ const config_buzzer_t *_config;
 
 status_t signal_init(const config_buzzer_t *config)
 {
-    xTaskCreate(signal_task, "Signal_Task", 2048, NULL, 2, &_signal_task_handle);
+    assert(config);
     _config = config;
+
+    // Most of these signals involve seconds of waiting. We segment these into their own task.
+    xTaskCreate(
+        signal_task, 
+        SIGNAL_TASK_NAME, 
+        SIGNAL_TASK_STACK, 
+        NULL, 
+        SIGNAL_TASK_PRIO, 
+        &_signal_task_handle
+    );
+
     return STATUS_OK;
 }
 
 void signal_alert(void)
 {
-    xTaskNotify(_signal_task_handle, SIGNAL_ALERT_FLAG, eSetBits);
+    if (_config->enabled)
+    {
+        xTaskNotify(_signal_task_handle, SIGNAL_ALERT_FLAG, eSetBits);
+    }
 }
 
 void signal_ok(void)
 {
-    xTaskNotify(_signal_task_handle, SIGNAL_OK_FLAG, eSetBits);
+    if (_config->enabled)
+    {
+        xTaskNotify(_signal_task_handle, SIGNAL_OK_FLAG, eSetBits);
+    }
 }
 
 void signal_cardread(void)
 {
-    if (_config->buzz_on_swipe)
+    if (_config->enabled && _config->buzz_on_swipe)
     {
         xTaskNotify(_signal_task_handle, SIGNAL_CARDREAD_FLAG, eSetBits);
     }
@@ -45,7 +70,10 @@ void signal_cardread(void)
 
 void signal_action(void)
 {
-    xTaskNotify(_signal_task_handle, SIGNAL_ACTION_FLAG, eSetBits);
+    if (_config->enabled)
+    {
+        xTaskNotify(_signal_task_handle, SIGNAL_ACTION_FLAG, eSetBits);
+    }
 }
 
 void signal_task(void *params)
