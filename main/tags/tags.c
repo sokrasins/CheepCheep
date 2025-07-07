@@ -7,6 +7,7 @@
 #include "cJSON.h"
 
 #include <stdio.h>
+#include <assert.h>
 
 // Filename where the authorized tags are saved
 #define TAGS_FILENAME "tags.json"
@@ -70,6 +71,8 @@ status_t tags_verify(uint32_t card)
 
 status_t tag_sync_handler(msg_t *msg)
 {
+    assert(msg);
+
     // Only handle sync messages
     if (msg->type == MSG_SYNC)
     {
