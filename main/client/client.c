@@ -133,7 +133,7 @@ status_t client_send_msg(msg_t *msg)
     msg_to_cJSON(msg, root);
     status = ws_send(root);
     cJSON_Delete(root);
-    return status;   
+    return status;
 }
 
 static void client_ping_timer_cb(TimerHandle_t xTimer)

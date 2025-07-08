@@ -46,6 +46,7 @@ status_t ws_init(char *url)
         .reconnect_timeout_ms = 10000,      // Default
         .network_timeout_ms = 10000,        // Default
         .ping_interval_sec = 0xFFFFFFFF,    // Disable the automated ping, the server expects a client-level ping-pong
+        .task_stack = (8*1024),             // Bigger stack, default is (4*1024)
     };
 
     _ctx.client = esp_websocket_client_init(&ws_cfg);
@@ -86,12 +87,27 @@ status_t ws_evt_cb_register(ws_evt_cb_t cb, void *ctx)
 
 status_t ws_send(cJSON *msg)
 {
+    assert(msg);
+
     if (_ctx.connected)
     {
+        if (_ctx.client == NULL)
+        {
+            ERROR("The client is NULL, but status indicates it's connected. Setting disconnected state");
+            _ctx.connected = false;
+        }
+
         char *pkt = cJSON_PrintUnformatted(msg);
-        INFO("--> %.*s", strlen(pkt), pkt);
-        esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
-        return STATUS_OK;
+        if (pkt == NULL)
+        {
+            ERROR("Couldn't parse the json to be sent from websocket");
+        }
+        else
+        {
+            INFO("--> %.*s", strlen(pkt), pkt);
+            esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
+            return STATUS_OK;
+        }
     }
     else
     {
