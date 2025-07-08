@@ -16,6 +16,7 @@ status_t nvstate_init(void)
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
+        WARN("NVS doesn't have any free pages");
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
@@ -33,6 +34,7 @@ status_t nvstate_init(void)
     if (nvs_find_key(_handle, NVS_TAG_HASH_KEY, &out_type) == ESP_ERR_NVS_NOT_FOUND)
     {
         // initialize the key
+        INFO("Setting NVS key %s to default value", NVS_TAG_HASH_KEY);
         uint8_t tag_hash[16];
         memset(tag_hash, 0, 16);
         nvstate_tag_hash_set(tag_hash, 16);
@@ -75,8 +77,9 @@ status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
 
 status_t nvstate_config(config_t *config)
 {
-    size_t bytes;
+    size_t bytes = sizeof(config_t);
     esp_err_t err = nvs_get_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, &bytes);
+    ERROR("nvs get config error: %s", esp_err_to_name(err));
     return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
 }
 
