@@ -26,6 +26,9 @@ status_t console_start(void)
 
 status_t console_register(char *cmd, char *help, char *hint, cli_cb_t cb)
 {
+    assert(cmd);
+    assert(cb);
+    
     const esp_console_cmd_t _cmd = {
         .command = cmd,
         .help = help,

@@ -1,6 +1,11 @@
+// First take in the project-defined config
 #include "device_config.h"
+
+// Then take in the default values. Any values not defined at the project level 
+// will be defined by the defaults.
 #include "config_defaults.h"
 
+// Now populate inital config with the #defined values
 const config_t _defaults = {
     .device_type = CONFIG_DEVICE_TYPE,
     .client = {
