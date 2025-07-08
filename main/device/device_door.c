@@ -65,7 +65,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
 
     signal_cardread();
 
-    // Consider doin this in a task
+    // Consider doing this in a task
     if (tags_verify(card->raw) == STATUS_OK)
     {
         WARN("Access granted");

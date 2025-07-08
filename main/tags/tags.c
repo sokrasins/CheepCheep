@@ -39,8 +39,8 @@ status_t tags_init(void)
         uint8_t tag_hash[TAG_HASH_LEN];
         memset(tag_hash, 0, TAG_HASH_LEN);
         nvstate_tag_hash_set(tag_hash, TAG_HASH_LEN);
-        fs_rewind(tag_file);
     }
+    fs_rewind(tag_file);
 
     // Register a handler with the client to handle incoming sync messages
     return client_handler_register(tag_sync_handler);
