@@ -3,6 +3,7 @@
 
 #include "device_type_api.h"
 
+// TODO: Unimplemented
 extern device_t interlock;
 
 #endif /*DEVICE_INTERLOCK_H_*/

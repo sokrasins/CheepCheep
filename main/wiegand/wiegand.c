@@ -18,6 +18,7 @@
 // considered an error and thrown out
 #define WIEG_TIMEOUT        20U //ms
 
+// Task config
 #define WIEGAND_TASK_NAME   "Wiegand_Task" 
 #define WIEGAND_TASK_STACK  4096U
 #define WIEGAND_TASK_PRIO   2U
