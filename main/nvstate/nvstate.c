@@ -67,8 +67,8 @@ status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
 {
     assert(tag_hash);
 
-    esp_err_t err = nvs_get_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, TAG_HASH_LEN);
     *len = TAG_HASH_LEN;
+    esp_err_t err = nvs_get_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
     return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
 }
 

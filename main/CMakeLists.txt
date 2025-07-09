@@ -46,6 +46,7 @@ INCLUDE_DIRS
     "console"
     )
 
-# Note: you must have a partition named the first argument (here it's "littlefs")
-# in your partition table csv file.
-littlefs_create_partition_image(storage ../flash_data FLASH_IN_PROJECT)
+
+# This will include the contents of the folder into the file system. This only 
+# applies to the binary for flashing, not the dfu-capable image.
+#littlefs_create_partition_image(storage ../flash_data FLASH_IN_PROJECT)
