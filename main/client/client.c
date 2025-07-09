@@ -176,11 +176,10 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     switch (evt)
     {
         case WS_OPEN: {
-            // Websocket good now, we can stop the reconnect timer
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdTRUE)
+            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
             {
-                INFO("Stopping reconnection timer");
-                xTimerStop(_ctx.reconnect_timer, portMAX_DELAY);
+                INFO("Starting reconnection timer");
+                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
             }
 
             // Send authentication request
@@ -197,11 +196,11 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             // Start the reconnection timer to makle sure the websocket 
             // reconnects after a while. If not, then we need to manually reconnect.
             ERROR("Client lost websocket connection");
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
-            {
-                INFO("Starting reconnection timer");
-                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
-            }
+            //if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
+            //{
+            //    INFO("Starting reconnection timer");
+            //    xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
+            //}
             break;
 
         case WS_MSG:
@@ -238,6 +237,7 @@ status_t client_msg_handler(msg_t *msg)
     }
     if (msg->type == MSG_PONG)
     {
+        xTimerReset(_ctx.reconnect_timer, pdMS_TO_TICKS(10));
         DEBUG("Pong received");
         return STATUS_OK;
     }
