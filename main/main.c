@@ -67,10 +67,6 @@ void app_main(void)
     status = gpio_init(&config->pins, &config->general);
     if (status != STATUS_OK) { ERROR("gpio_init failed: %ld", status); }
 
-    INFO("Setting up storage");
-    status = fs_init();
-    if (status != STATUS_OK) { ERROR("fs_init failed: %ld", status); }
-
     if (config->general.wiegand_enabled)
     {
         INFO("Setting up reader");

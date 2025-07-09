@@ -19,6 +19,13 @@ file_t tag_file = NULL;
 
 status_t tags_init(void)
 {
+    // Init file system
+    status_t status = fs_init();
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't inialize the filesystem: %ld", status);
+    }
+
     // If the file doesn't exist, create it
     if (!fs_exists(TAGS_FILENAME))
     {
@@ -41,7 +48,7 @@ status_t tags_init(void)
     // Here we check if the tag file is empty. If so, the hash is cleared so 
     // the sync message can populate the tags list here.
     char card_str[16];
-    if (fs_readline(tag_file, card_str) == -STATUS_EOF)
+    if (fs_readline(tag_file, card_str, 16) == -STATUS_EOF)
     {
         uint8_t tag_hash[TAG_HASH_LEN];
         memset(tag_hash, 0, TAG_HASH_LEN);
@@ -59,7 +66,7 @@ status_t tags_verify(uint32_t card)
     // against card. If EOF is reached before a match is found, no match 
     // exists.
     char card_str[16];
-    status_t status = fs_readline(tag_file, card_str);
+    status_t status = fs_readline(tag_file, card_str, 16);
     while (status != -STATUS_EOF) 
     {
         uint32_t db_card = atoi(card_str);
@@ -69,7 +76,7 @@ status_t tags_verify(uint32_t card)
             fs_rewind(tag_file);
             return STATUS_OK;
         }
-        status = fs_readline(tag_file, card_str);
+        status = fs_readline(tag_file, card_str, 16);
     }
 
     fs_rewind(tag_file);
@@ -113,8 +120,12 @@ status_t tag_sync_handler(msg_t *msg)
             cJSON_ArrayForEach(tag, msg->sync.tags)
             {
                 // We're reformatting: each card is delimited with a line feed.
-                int len = sprintf(file_line, "%d\n", atoi(tag->valuestring));
-                fs_write(new_file, file_line, len);
+                int len = snprintf(file_line, 16, "%d\n", atoi(tag->valuestring));
+                if (len > 16 || len < 0)
+                {
+                    ERROR("Unexpected line length (%d): %s", len, file_line);
+                }
+                fs_write_str(new_file, file_line);
             }
 
             // Reopen the file as read-only
