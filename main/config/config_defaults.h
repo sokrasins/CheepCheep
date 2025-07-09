@@ -3,6 +3,9 @@
 
 #include "config_types.h"
 
+// Set default values for all config here. Any config not defined at the 
+// project level will take the value assigned here.
+
 #ifndef CONFIG_DEVICE_TYPE
 #define CONFIG_DEVICE_TYPE DEVICE_NONE
 #endif /*CONFIG_DEVICE_TYPE*/

@@ -5,9 +5,13 @@
 #include "console.h"
 #include "bsp.h"
 
+// Track if config has been initialized or not
 static bool _init = false;
+
+// Device configuration
 static config_t _config;
 
+// Console command handlers, most are config setters
 int _set_defaults(int argc, char **argv);
 int _set_wifi_ssid(int argc, char **argv);
 int _set_wifi_pass(int argc, char **argv);
@@ -46,6 +50,9 @@ int _set_32bit_mode(int argc, char **argv);
 
 status_t config_init(void)
 {
+
+    // Register all the console command handlers
+
     // Meta
     console_register("factory_reset", "set default config", NULL, _set_defaults);
     
@@ -108,10 +115,13 @@ status_t config_init(void)
     // dev
     console_register("log", "set log level", NULL, _set_log_level);
     
+    // Get config from nvstate
     INFO("Fetching configuration");
     status_t status = nvstate_config(&_config);
     if (status != STATUS_OK)
     {
+        // If no config exists, use the default values (specified with the 
+        // compiled headers) as the base config
         WARN("No config stored, saving defaults");
         status = nvstate_config_set((config_t *) &_defaults);
         status |= nvstate_config(&_config);  
@@ -121,6 +131,7 @@ status_t config_init(void)
 
 const config_t * config_get(void)
 {
+    // If config hasn't been init yet, initialize it
     if (!_init)
     {
         if (config_init() != STATUS_OK)

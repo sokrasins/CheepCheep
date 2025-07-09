@@ -17,12 +17,15 @@
 #define SIGNAL_ALERT_TIME       300U //ms
 #define SIGNAL_CARDREAD_TIME    200U //ms
 
-#define SIGNAL_TASK_NAME "Signal_Task"
-#define SIGNAL_TASK_STACK   2048U
-#define SIGNAL_TASK_PRIO    2U
+// Task config
+#define SIGNAL_TASK_NAME        "Signal_Task"
+#define SIGNAL_TASK_STACK       2048U
+#define SIGNAL_TASK_PRIO        2U
 
+// Helpers
 void signal_task(void *params);
 
+// Local state
 static TaskHandle_t _signal_task_handle = NULL;
 const config_buzzer_t *_config;
 
@@ -31,7 +34,8 @@ status_t signal_init(const config_buzzer_t *config)
     assert(config);
     _config = config;
 
-    // Most of these signals involve seconds of waiting. We segment these into their own task.
+    // Most of these signals involve seconds of waiting. We handle these in 
+    // it's own task.
     xTaskCreate(
         signal_task, 
         SIGNAL_TASK_NAME, 
@@ -90,6 +94,7 @@ void signal_task(void *params)
 
                 gpio_out_set(OUTPUT_READER_BUZZER, false);
             }
+
             if(flags & SIGNAL_ALERT_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);
@@ -107,12 +112,14 @@ void signal_task(void *params)
                 gpio_out_set(OUTPUT_READER_BUZZER, false);
                 gpio_out_set(OUTPUT_READER_LED, false);
             }
+
             if (flags & SIGNAL_CARDREAD_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);
                 vTaskDelay(pdMS_TO_TICKS(SIGNAL_CARDREAD_TIME));
                 gpio_out_set(OUTPUT_READER_BUZZER, false);
             }
+            
             if (flags & SIGNAL_ACTION_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);

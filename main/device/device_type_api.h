@@ -4,8 +4,14 @@
 #include "config_types.h"
 #include "status.h"
 
+/**
+ * @brief Initialize the device
+ * @param config device configuration
+ * @return STATUS_OK: successful
+ */
 typedef status_t (*device_init_t)(const config_t *config);
 
+// Device object
 typedef struct {
     device_init_t init;
 } device_t;

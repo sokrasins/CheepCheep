@@ -10,6 +10,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include <assert.h>
+
+// Task config
+#define DOOR_TASK_NAME  "Door_Task"
+#define DOOR_TASK_STACK 4096U
+#define DOOR_TASK_PRIO  2U
+
+#define DOOR_TASK_SLEEP 100 //ms
+
 typedef struct {
     const config_general_t *config;
     bool prev_door_open_state;
@@ -22,14 +31,15 @@ typedef struct {
 
 // API
 static status_t door_init(const config_t *config);
-static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
 
 // Private
 void door_task(void *params);
 static void lock_door(void);
 static void unlock_door(void);
 static status_t client_cmd_handler(msg_t *msg);
+static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
 
+// Door instance
 device_t door = {
     .init = door_init,
 };
@@ -43,6 +53,8 @@ static door_ctx_t _ctx = {
 
 static status_t door_init(const config_t *config)
 {
+    assert(config);
+
     signal_init(&config->buzzer);
 
     _ctx.config = &config->general;
@@ -51,7 +63,7 @@ static status_t door_init(const config_t *config)
     // Register cb for server requests
     client_handler_register(client_cmd_handler);
 
-    xTaskCreate(door_task, "Door_Task", 4096, (void *)&_ctx, 1, NULL);
+    xTaskCreate(door_task, DOOR_TASK_NAME, DOOR_TASK_STACK, (void *)&_ctx, DOOR_TASK_PRIO, NULL);
     return STATUS_OK;
 }
 
@@ -63,14 +75,20 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
     INFO("    facility: 0x%hx", card->facility);
     INFO("    user id:  0x%hx", card->user_id);
 
+    // Signal that a card was read
     signal_cardread();
 
+<<<<<<< HEAD
     // Consider doing this in a task
+=======
+    // Check the card swipe against the authorized card list
+>>>>>>> comments
     if (tags_verify(card->raw) == STATUS_OK)
     {
         WARN("Access granted");
         if (nvstate_locked_out())
         {
+            // If "locked out", don't open the door even if the card is good
             msg_t msg = {
                 .type = MSG_ACCESS_LOCKED_OUT,
                 .access_lockout.card_id = card->raw,
@@ -80,6 +98,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
         }
         else
         {
+            // Open the door
             msg_t msg = {
                 .type = MSG_ACCESS_GRANTED,
                 .access_granted.card_id = card->raw,
@@ -90,6 +109,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
     }
     else
     {
+        // Couldn't match card in database, don't unlock
         WARN("Access denied");
         msg_t msg = {
             .type = MSG_ACCESS_DENIED,
@@ -99,11 +119,16 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
         signal_alert();
     }
 
+    // Store the last card
+    // TODO: This field is currently unused. Either use to debounce, or don't 
+    // track.
     _ctx.last_card_id = card->raw;
 }
 
 void door_task(void *params)
 {
+    assert(params);
+
     door_ctx_t *ctx = (door_ctx_t *) params;
     while(true)
     {
@@ -180,7 +205,7 @@ void door_task(void *params)
             }
         }
         
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(DOOR_TASK_SLEEP));
     }
 }
 

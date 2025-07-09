@@ -4,8 +4,11 @@
 #include "log.h"
 #include <stdbool.h>
 
+// #TODO Define this. I think 80 is the max (20 dBm), but figure this out and 
+// actually use the value in the wifi config
 #define WIFI_POW_MAX 80
 
+// String byte lengths
 #define CONFIG_PORTAL_WS_URL_BYTES      128
 #define CONFIG_PORTAL_API_SECRET_BYTES  42
 #define CONFIG_NET_SSID_BYTES           64
@@ -16,6 +19,7 @@
 #define CONFIG_ILOCK_USER_BYTES         64
 #define CONFIG_ILOCK_PASS_BYTES         64
 
+// Device types
 typedef enum {
     DEVICE_DOOR,
     DEVICE_INTERLOCK,
@@ -23,17 +27,20 @@ typedef enum {
     DEVICE_NONE,
 } device_type_t;
 
+// Vending relay behavior
 typedef enum {
     VENDING_NONE,
     VENDING_HOLD,
     VENDING_TOGGLE,
 } vending_mode_t;
 
+// Portal configuration
 typedef struct {
     char ws_url[CONFIG_PORTAL_WS_URL_BYTES];
     char api_secret[CONFIG_PORTAL_API_SECRET_BYTES];
 } config_portal_t;
 
+// Network configuration
 typedef struct {
     char wifi_ssid[CONFIG_NET_SSID_BYTES];
     char wifi_pass[CONFIG_NET_PASS_BYTES];
@@ -41,6 +48,7 @@ typedef struct {
     int wifi_power;
 } config_network_t;
 
+// DFU configuration
 typedef struct {
     bool enabled;
     char url[CONFIG_DFU_URL_BYTES];
@@ -48,6 +56,7 @@ typedef struct {
     bool skip_version_check;
 } config_dfu_t;
 
+// General configuration
 typedef struct {
     bool lock_reversed;
     bool reader_led_reversed;
@@ -66,6 +75,7 @@ typedef struct {
     bool uid_32bit_mode;
 } config_general_t;
 
+// Buzzer config
 typedef struct {
     bool enabled;
     bool reversed;
@@ -73,18 +83,21 @@ typedef struct {
     int action_delay;
 } config_buzzer_t;
 
+// Interlock config
 typedef struct {
     char tasmota_host[CONFIG_ILOCK_HOST_BYTES];
     char tasmota_user[CONFIG_ILOCK_USER_BYTES];
     char tasmota_pass[CONFIG_ILOCK_PASS_BYTES];
 } config_interlock_t;
 
+// Vending config
 typedef struct {
     int price;
     vending_mode_t mode;
     int toggle_time;
 } config_vending_t;
 
+// LCD config
 typedef struct {
     bool enable;
     int address;
@@ -92,6 +105,7 @@ typedef struct {
     int cols;
 } config_lcd_t;
 
+// Pin config
 typedef struct {
     int aux_1;
     int aux_2;
@@ -112,16 +126,19 @@ typedef struct {
     int wiegand_one;
 } config_pins_t;
 
+// Development config
 typedef struct {
     log_level_t log_level;
 } config_dev_t;
 
+// Client configs
 typedef struct {
     config_portal_t portal;
     config_network_t net;
     config_dfu_t dfu;
 } config_client_t;
 
+// Total device config
 typedef struct {
     device_type_t device_type;
     config_client_t client;
