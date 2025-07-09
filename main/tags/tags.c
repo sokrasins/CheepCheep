@@ -10,7 +10,7 @@
 #include <assert.h>
 
 // Filename where the authorized tags are saved
-#define TAGS_FILENAME "tags.json"
+#define TAGS_FILENAME "tags.txt"
 
 status_t tag_sync_handler(msg_t *msg);
 
