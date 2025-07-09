@@ -3,6 +3,7 @@
 
 #include "status.h"
 #include <stddef.h>
+#include <stdbool.h>
 
 typedef void *file_t;
 
@@ -23,5 +24,7 @@ void fs_rewind(file_t file);
 status_t fs_close(file_t file);
 
 status_t fs_rm(const char *name);
+
+bool fs_exists(const char *name);
 
 #endif /*STORAGE_H_*/

@@ -3,6 +3,7 @@
 #include "log.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 
 #define FS_BASE_PATH       "/fs"
 #define FS_PARTITION_LABEL "storage"
@@ -123,4 +124,12 @@ status_t fs_rm(const char *name)
     }
 
     return STATUS_OK;
+}
+
+bool fs_exists(const char *name)
+{
+    struct stat st;
+    char path[64];
+    sprintf(path, "%s/%s", FS_BASE_PATH, name);
+    return stat(path, &st) == 0;
 }

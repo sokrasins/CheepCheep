@@ -19,6 +19,13 @@ file_t tag_file = NULL;
 
 status_t tags_init(void)
 {
+    // If the file doesn't exist, create it
+    if (!fs_exists(TAGS_FILENAME))
+    {
+        tag_file = fs_open(TAGS_FILENAME, "w");
+        fs_close(tag_file);
+    }
+
     tag_file = fs_open(TAGS_FILENAME, "r");
     if (tag_file == NULL)
     {

@@ -68,7 +68,8 @@
 			"esp_websocket_client.h": "c",
 			"device_creds.h": "c",
 			"device_config.h": "c",
-			"wiegand_fmt.h": "c"
+			"wiegand_fmt.h": "c",
+			"stat.h": "c"
 		}
 	}
 }
