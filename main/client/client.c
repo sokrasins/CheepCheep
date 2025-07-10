@@ -19,11 +19,11 @@
 // forcibly reconnecting. The WS will do some auto-reconnecting attempts, so 
 // this time gives the automated mechanism a few chances before the client 
 // intervenes.
-#define CLIENT_WS_RECONNECT_TIMEOUT 50U //s
+#define CLIENT_WS_PING_WDT_TIMEOUT 50U //s
 
 // Event handlers
 static void client_ping_timer_cb(TimerHandle_t xTimer);
-static void client_reconnect_timer_cb(TimerHandle_t xTimer);
+static void client_ping_wdt(TimerHandle_t xTimer);
 static void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx);
 static void net_evt_cb(net_evt_t evt, void *ctx);
 status_t client_msg_handler(msg_t *msg);
@@ -35,7 +35,7 @@ void client_reset_task(void *params);
 typedef struct {
     const config_portal_t *config;
     TimerHandle_t ping_timer;
-    TimerHandle_t reconnect_timer;
+    TimerHandle_t ping_wdt;
     client_cmd_handler_t handlers[CLIENT_CMD_HANDLER_MAX];
     TaskHandle_t reset_task_handle;
 } client_ctx_t;
@@ -44,6 +44,8 @@ static client_ctx_t _ctx;
 
 status_t client_init(const config_client_t *config, device_type_t device_type)
 {
+    assert(config);
+
     status_t status; 
 
     _ctx.config = &config->portal;
@@ -76,16 +78,16 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     );
     if (_ctx.ping_timer == NULL) { return -STATUS_NOMEM; }
 
-    // Create reconnection timer - Checks if reconnection does not occur within 
-    // the timer length, the system is reset.
-    _ctx.reconnect_timer = xTimerCreate(
-        "Reconnect_Timer", 
-        pdMS_TO_TICKS(1000 * CLIENT_WS_RECONNECT_TIMEOUT), 
+    // Create ping watchdog - if a pong is not received within the timer 
+    // length, the system is reset.
+    _ctx.ping_wdt = xTimerCreate(
+        "Ping_watchdog", 
+        pdMS_TO_TICKS(1000 * CLIENT_WS_PING_WDT_TIMEOUT), 
         false, 
         NULL, 
-        client_reconnect_timer_cb
+        client_ping_wdt
     );
-    if (_ctx.reconnect_timer == NULL) { return -STATUS_NOMEM; }
+    if (_ctx.ping_wdt == NULL) { return -STATUS_NOMEM; }
 
     // Build the uri for the websocket server
     status = net_init(&config->net);
@@ -98,7 +100,8 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     status = ws_init(url);
     if (status != STATUS_OK) { return status; }
 
-    ota_dfu_init(&config->dfu);
+    status = ota_dfu_init(&config->dfu);
+    if (status != STATUS_OK) { WARN("Couldn't start the ota dfu task"); }
 
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
     net_evt_cb_register(NET_EVT_CONNECT, (void *)&_ctx, net_evt_cb);
@@ -144,7 +147,7 @@ static void client_ping_timer_cb(TimerHandle_t xTimer)
     client_send_msg(&msg);
 }
 
-static void client_reconnect_timer_cb(TimerHandle_t xTimer)
+static void client_ping_wdt(TimerHandle_t xTimer)
 {
     // Run a task to reset the connection. These calls 
     // can't be done in this context, so a worker task 
@@ -172,17 +175,20 @@ static void net_evt_cb(net_evt_t evt, void *ctx)
 
 void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
 {
+    assert(ctx);
+
     client_ctx_t *client_ctx = (client_ctx_t *)ctx;
     switch (evt)
     {
         case WS_OPEN: {
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
+            // Start the watchdog once the connection is opened
+            if (xTimerIsTimerActive(_ctx.ping_wdt) == pdFALSE)
             {
                 INFO("Starting reconnection timer");
-                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
+                xTimerStart(_ctx.ping_wdt, pdMS_TO_TICKS(10));
             }
 
-            // Send authentication request
+            // First thing - send authentication request
             msg_t msg = {
                 .type = MSG_AUTHENTICATE,
                 .authenticate.secret_key = (char *)client_ctx->config->api_secret,
@@ -192,15 +198,10 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
         }
 
         case WS_CLOSE:
-            // The websocket will attempt to automatically reconnect. 
-            // Start the reconnection timer to makle sure the websocket 
-            // reconnects after a while. If not, then we need to manually reconnect.
+            // Nothing happens here. If closed, either:
+            // - the websocket will autoreconnect fast, or
+            // - the pong watchdog will reset everything
             ERROR("Client lost websocket connection");
-            //if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
-            //{
-            //    INFO("Starting reconnection timer");
-            //    xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
-            //}
             break;
 
         case WS_MSG:
@@ -237,7 +238,8 @@ status_t client_msg_handler(msg_t *msg)
     }
     if (msg->type == MSG_PONG)
     {
-        xTimerReset(_ctx.reconnect_timer, pdMS_TO_TICKS(10));
+        // Kick the ping watchdog
+        xTimerReset(_ctx.ping_wdt, pdMS_TO_TICKS(10));
         DEBUG("Pong received");
         return STATUS_OK;
     }
@@ -254,7 +256,7 @@ status_t client_msg_handler(msg_t *msg)
             client_send_msg(&msg);
 
             // Start pinging the websocket server
-            xTimerStart(_ctx.ping_timer, portMAX_DELAY);
+            xTimerStart(_ctx.ping_timer, pdMS_TO_TICKS(10));
         }
         else
         {
