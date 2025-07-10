@@ -63,7 +63,9 @@ static status_t door_init(const config_t *config)
     // Register cb for server requests
     client_handler_register(client_cmd_handler);
 
-    xTaskCreate(door_task, DOOR_TASK_NAME, DOOR_TASK_STACK, (void *)&_ctx, DOOR_TASK_PRIO, NULL);
+    BaseType_t ret = xTaskCreate(door_task, DOOR_TASK_NAME, DOOR_TASK_STACK, (void *)&_ctx, DOOR_TASK_PRIO, NULL);
+    if (ret != pdPASS) { return -STATUS_NOMEM; }
+    
     return STATUS_OK;
 }
 

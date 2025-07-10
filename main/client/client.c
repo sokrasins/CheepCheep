@@ -19,7 +19,7 @@
 // forcibly reconnecting. The WS will do some auto-reconnecting attempts, so 
 // this time gives the automated mechanism a few chances before the client 
 // intervenes.
-#define CLIENT_WS_RECONNECT_TIMEOUT 50U //s
+#define CLIENT_WS_RECONNECT_TIMEOUT 80U //s
 
 // Event handlers
 static void client_ping_timer_cb(TimerHandle_t xTimer);
@@ -177,10 +177,10 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     {
         case WS_OPEN: {
             // Websocket good now, we can stop the reconnect timer
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdTRUE)
+            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
             {
-                INFO("Stopping reconnection timer");
-                xTimerStop(_ctx.reconnect_timer, portMAX_DELAY);
+                INFO("Starting connection watchdog");
+                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
             }
 
             // Send authentication request
@@ -197,11 +197,11 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             // Start the reconnection timer to makle sure the websocket 
             // reconnects after a while. If not, then we need to manually reconnect.
             ERROR("Client lost websocket connection");
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
-            {
-                INFO("Starting reconnection timer");
-                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
-            }
+            //if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
+            //{
+            //    INFO("Starting reconnection timer");
+            //    xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
+            //}
             break;
 
         case WS_MSG:
@@ -238,6 +238,7 @@ status_t client_msg_handler(msg_t *msg)
     }
     if (msg->type == MSG_PONG)
     {
+        xTimerReset(_ctx.reconnect_timer, 10);
         DEBUG("Pong received");
         return STATUS_OK;
     }

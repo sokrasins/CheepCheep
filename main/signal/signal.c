@@ -36,7 +36,7 @@ status_t signal_init(const config_buzzer_t *config)
 
     // Most of these signals involve seconds of waiting. We handle these in 
     // it's own task.
-    xTaskCreate(
+    BaseType_t ret = xTaskCreate(
         signal_task, 
         SIGNAL_TASK_NAME, 
         SIGNAL_TASK_STACK, 
@@ -44,7 +44,8 @@ status_t signal_init(const config_buzzer_t *config)
         SIGNAL_TASK_PRIO, 
         &_signal_task_handle
     );
-
+    if (ret != pdPASS) { return -STATUS_NOMEM; }
+    
     return STATUS_OK;
 }
 

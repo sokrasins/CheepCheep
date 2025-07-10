@@ -21,10 +21,7 @@ status_t tags_init(void)
 {
     // Init file system
     status_t status = fs_init();
-    if (status != STATUS_OK)
-    {
-        ERROR("Couldn't inialize the filesystem: %ld", status);
-    }
+    if (status != STATUS_OK) { return -STATUS_IO; }
 
     // If the file doesn't exist, create it
     if (!fs_exists(TAGS_FILENAME))
@@ -34,17 +31,8 @@ status_t tags_init(void)
     }
 
     tag_file = fs_open(TAGS_FILENAME, "r");
-    if (tag_file == NULL)
-    {
-        ERROR("Couldn't open %s", TAGS_FILENAME);
-        return -STATUS_NOFILE;
-    }
+    if (tag_file == NULL) { return -STATUS_NOFILE; }
 
-    // When new firmware is written the tags file is lost, but the nvstate 
-    // partition is usually untouched (unless the flash is explicitly erased). 
-    // In this case, a sync message with the same tags list will be rejected 
-    // until a change is made to the list (and thus changing the hash).
-    //
     // Here we check if the tag file is empty. If so, the hash is cleared so 
     // the sync message can populate the tags list here.
     char card_str[16];
@@ -85,6 +73,7 @@ status_t tags_verify(uint32_t card)
 
 status_t tag_sync_handler(msg_t *msg)
 {
+    status_t status;
     assert(msg);
 
     // Only handle sync messages
@@ -93,9 +82,9 @@ status_t tag_sync_handler(msg_t *msg)
         // Get the existing hash
         size_t hash_len;
         uint8_t cur_hash[TAG_HASH_LEN];
-        nvstate_tag_hash(cur_hash, &hash_len);
-
+        
         INFO("New authorized card list received");
+        nvstate_tag_hash(cur_hash, &hash_len);
 
         // Only update the tags if the hashes are different
         if (memcmp(cur_hash, msg->sync.hash, TAG_HASH_LEN) != 0)
@@ -108,10 +97,10 @@ status_t tag_sync_handler(msg_t *msg)
             fs_close(tag_file);
             fs_rm(TAGS_FILENAME);
             file_t new_file = fs_open(TAGS_FILENAME, "w");
-            if (new_file == 0)
+            if (new_file == NULL)
             {
                 ERROR("Couldn't save new cards");
-                return STATUS_OK;
+                return STATUS_OK; // Message handled, even though we couldn't save
             }
     
             // Parse the Received JSON. The tags are provided in an array, and 
