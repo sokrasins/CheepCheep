@@ -76,7 +76,7 @@ status_t net_init(const config_network_t *config)
     if (err != ESP_OK)
     {
         ERROR("Can't create event loop: %s", esp_err_to_name(err));
-        if (err != ESP_ERR_INVALID_STATE) { return -STATUS_IO };
+        if (err != ESP_ERR_INVALID_STATE) { return -STATUS_IO; };
     }
 
     // Call will assert if misconfigured
@@ -95,7 +95,7 @@ status_t net_init(const config_network_t *config)
     BaseType_t ret = xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, &_ctx.net_task_handle);
     if (ret != pdPASS)
     {
-        ERROR("Couldn't create network task")
+        ERROR("Couldn't create network task");
         return -STATUS_NOMEM;
     }
 

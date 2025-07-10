@@ -71,7 +71,7 @@ status_t nvstate_locked_out_set(bool locked_out)
     if (err != ESP_OK)
     {
         ERROR("Couldn't set locked_out parameter: %s", esp_err_to_name(err));
-        return -STATUS_NO_RESOURCE
+        return -STATUS_NO_RESOURCE;
     }
     return STATUS_OK;
 }
@@ -85,7 +85,7 @@ status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
     if (err != ESP_OK)
     {
         ERROR("Couldn't get tag_hash parameter: %s", esp_err_to_name(err));
-        return -STATUS_NO_RESOURCE
+        return -STATUS_NO_RESOURCE;
     }
     return STATUS_OK;
 }
@@ -98,7 +98,7 @@ status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
     if (err != ESP_OK)
     {
         ERROR("Couldn't set tag_hash parameter: %s", esp_err_to_name(err));
-        return -STATUS_NO_RESOURCE
+        return -STATUS_NO_RESOURCE;
     }
     return STATUS_OK;
 }
@@ -112,7 +112,7 @@ status_t nvstate_config(config_t *config)
     if (err != ESP_OK)
     {
         ERROR("Couldn't get config parameter: %s", esp_err_to_name(err));
-        return -STATUS_NO_RESOURCE
+        return -STATUS_NO_RESOURCE;
     }
     return STATUS_OK;
 }
@@ -125,7 +125,7 @@ status_t nvstate_config_set(const config_t *config)
     if (err != ESP_OK)
     {
         ERROR("Couldn't set config parameter: %s", esp_err_to_name(err));
-        return -STATUS_NO_RESOURCE
+        return -STATUS_NO_RESOURCE;
     }
     return STATUS_OK;
 }
