@@ -39,20 +39,28 @@ status_t msg_to_cJSON(msg_t *msg, cJSON *json)
     switch (msg->type)
     {
         case MSG_AUTHENTICATE:
-            cJSON_AddStringToObject(json, "secret_key", msg->authenticate.secret_key);
-            status = STATUS_OK;
+            if (cJSON_AddStringToObject(json, "secret_key", msg->authenticate.secret_key) != NULL)
+            {
+                status = STATUS_OK;
+            }
             break;
 
         case MSG_IP_ADDR: {
             char ip_str[32];
-            sprintf(ip_str, "%u.%u.%u.%u", 
+            int rc = snprintf(ip_str, 32, "%u.%u.%u.%u", 
                 (uint8_t) ((msg->ip_address.ip_address >> 0) & 0xFF), 
                 (uint8_t) ((msg->ip_address.ip_address >> 8) & 0xFF), 
                 (uint8_t) ((msg->ip_address.ip_address >> 16) & 0xFF), 
                 (uint8_t) ((msg->ip_address.ip_address >> 24) & 0xFF)
             );
-            cJSON_AddStringToObject(json, "ip_address", ip_str);
-            status = STATUS_OK;
+            if (rc < 0 || rc >= 32)
+            {
+                status = -STATUS_NOMEM;
+            }
+            if (cJSON_AddStringToObject(json, "ip_address", ip_str) != NULL)
+            {
+                status = STATUS_OK;
+            }
             break;
         }
 
@@ -66,18 +74,24 @@ status_t msg_to_cJSON(msg_t *msg, cJSON *json)
             break;
 
         case MSG_ACCESS_DENIED:
-            cJSON_AddNumberToObject(json, "card_id", msg->access_denied.card_id);
-            status = STATUS_OK;
+            if (cJSON_AddNumberToObject(json, "card_id", msg->access_denied.card_id) != NULL)
+            {
+                status = STATUS_OK;
+            }
             break;
 
         case MSG_ACCESS_LOCKED_OUT:
-            cJSON_AddNumberToObject(json, "card_id", msg->access_lockout.card_id);
-            status = STATUS_OK;
+            if (cJSON_AddNumberToObject(json, "card_id", msg->access_lockout.card_id) != NULL)
+            {
+                status = STATUS_OK;
+            }
             break;
 
         case MSG_ACCESS_GRANTED:
-            cJSON_AddNumberToObject(json, "card_id", msg->access_granted.card_id);
-            status = STATUS_OK;
+            if (cJSON_AddNumberToObject(json, "card_id", msg->access_granted.card_id) != NULL)
+            {
+                status = STATUS_OK;
+            }
             break;
 
         // These have no payloads
@@ -114,15 +128,16 @@ status_t msg_from_cJSON(cJSON *json, msg_t *msg)
     { 
         cJSON *value = cJSON_GetObjectItem(json, "authorised");
         if (value == NULL) { return -STATUS_INVALID; }
-        msg->type = MSG_AUTHORISED; 
+        msg->type = MSG_AUTHORISED;
         msg->authorised.authorised = (bool) value->valueint;
         return STATUS_OK;
     }
 
-    // Everything else following the same general format.
-    // Try to get the message tyoe first.
+    // Everything else following the same general format. Try to get the 
+    // message type first.
     cJSON *msg_type_json = cJSON_GetObjectItem(json, "command");
     if (!msg_type_json) { return -STATUS_INVALID; }
+
     msg->type = str_to_msgtype(msg_type_json->valuestring);
     if (msg->type == MSG_INVALID) { return -STATUS_INVALID; }
 
@@ -148,8 +163,11 @@ status_t msg_from_cJSON(cJSON *json, msg_t *msg)
                 hexstr_to_bytes(payload_val->valuestring, 16, msg->sync.hash);
             }
             payload_val = cJSON_GetObjectItem(json, "tags");
-            msg->sync.tags = payload_val; // To be parsed by the handler
-            status = STATUS_OK;
+            if (payload_val != NULL)
+            {
+                msg->sync.tags = payload_val; // To be parsed by the handler
+                status = STATUS_OK;
+            }
             break;
         }
 

@@ -87,19 +87,22 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     );
     if (_ctx.reconnect_timer == NULL) { return -STATUS_NOMEM; }
 
-    // Build the uri for the websocket server
+    // Init net
     status = net_init(&config->net);
+    if (status != STATUS_OK) { return status; }
 
+    // Build the websocket uri and init ws
     char url[128];
     uint8_t mac[6];
     net_get_mac(mac);
     client_build_uri(device_type, _ctx.config->ws_url, mac, url);
-
     status = ws_init(url);
     if (status != STATUS_OK) { return status; }
 
+    // Init dfu
     ota_dfu_init(&config->dfu);
 
+    // Register event handlers
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
     net_evt_cb_register(NET_EVT_CONNECT, (void *)&_ctx, net_evt_cb);
     net_evt_cb_register(NET_EVT_DISCONNECT, (void *)&_ctx, net_evt_cb);
@@ -128,11 +131,14 @@ status_t client_handler_register(client_cmd_handler_t handler)
 
 status_t client_send_msg(msg_t *msg)
 {
-    status_t status;
+    status_t status = -STATUS_NOMEM;
     cJSON *root = cJSON_CreateObject();
-    msg_to_cJSON(msg, root);
-    status = ws_send(root);
-    cJSON_Delete(root);
+    if (root)
+    {
+        msg_to_cJSON(msg, root);
+        status = ws_send(root);
+        cJSON_Delete(root);
+    }
     return status;
 }
 
@@ -193,15 +199,7 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
         }
 
         case WS_CLOSE:
-            // The websocket will attempt to automatically reconnect. 
-            // Start the reconnection timer to makle sure the websocket 
-            // reconnects after a while. If not, then we need to manually reconnect.
             ERROR("Client lost websocket connection");
-            //if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
-            //{
-            //    INFO("Starting reconnection timer");
-            //    xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
-            //}
             break;
 
         case WS_MSG:
