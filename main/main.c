@@ -20,7 +20,6 @@
 
 #include "esp_app_desc.h"
 
-device_t *device;
 const config_t *config;
 
 static status_t server_cmd_handler(msg_t *msg);
@@ -94,26 +93,23 @@ void app_main(void)
 
     switch(config->device_type) {
         case DEVICE_DOOR:
-            INFO("Configuring as door");
-            device = &door;
+            INFO("Initializing door");
+            status = door_init(config);
             break;
 
         case DEVICE_INTERLOCK:
-            INFO("Configuring as interlock");
-            device = &interlock;
+            INFO("Initializing interlock");
+            status = interlock_init(config);
             break;
 
         case DEVICE_VENDING:
-            INFO("Configuring as vending");
-            device = &vending;
+            INFO("Initializing vending");
+            status = vending_init(config);
             break;
 
         default:
             ERROR("Invalid device specified: %d.\nCheck configuration and reflash.", config->device_type);
     }
-
-    INFO("Initializing device");
-    status = device->init(config);
     if (status != STATUS_OK) { ERROR("device init failed: %lu", status); }
 
     while(1)

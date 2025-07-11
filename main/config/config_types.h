@@ -4,9 +4,7 @@
 #include "log.h"
 #include <stdbool.h>
 
-// #TODO Define this. I think 80 is the max (20 dBm), but figure this out and 
-// actually use the value in the wifi config
-#define WIFI_POW_MAX 80
+#define WIFI_POW_MAX 20 //dBm
 
 // String byte lengths
 #define CONFIG_PORTAL_WS_URL_BYTES      128
@@ -45,7 +43,7 @@ typedef struct {
     char wifi_ssid[CONFIG_NET_SSID_BYTES];
     char wifi_pass[CONFIG_NET_PASS_BYTES];
     char wifi_country_code[CONFIG_NET_COUNTRY_BYTES];
-    int wifi_power;
+    int wifi_power; // range: 2-20 dBm
 } config_network_t;
 
 // DFU configuration

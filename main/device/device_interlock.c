@@ -12,16 +12,11 @@ typedef struct {
     interlock_session_t session;
 } ilock_ctx_t;
 
-static status_t interlock_init(const config_t *config);
 static void interlock_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
-
-device_t interlock = {
-    .init = interlock_init,
-};
 
 static ilock_ctx_t _ctx;
 
-static status_t interlock_init(const config_t *config)
+status_t interlock_init(const config_t *config)
 {
     _ctx.evt_handle = wieg_evt_handler_reg(WIEG_EVT_NEWCARD, interlock_handle_swipe, (void *)&_ctx);
     return -STATUS_UNIMPL;

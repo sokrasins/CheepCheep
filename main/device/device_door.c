@@ -29,20 +29,12 @@ typedef struct {
     wieg_evt_handle_t evt_handle;
 } door_ctx_t;
 
-// API
-static status_t door_init(const config_t *config);
-
 // Private
 void door_task(void *params);
 static void lock_door(void);
 static void unlock_door(void);
 static status_t client_cmd_handler(msg_t *msg);
 static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
-
-// Door instance
-device_t door = {
-    .init = door_init,
-};
 
 static door_ctx_t _ctx = {
     .prev_door_open_state = false,
@@ -51,7 +43,7 @@ static door_ctx_t _ctx = {
     .last_card_id = 0,
 };
 
-static status_t door_init(const config_t *config)
+status_t door_init(const config_t *config)
 {
     assert(config);
 

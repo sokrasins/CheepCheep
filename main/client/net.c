@@ -142,7 +142,18 @@ status_t net_init(const config_network_t *config)
     memcpy(wifi_config.sta.password, _ctx.config->wifi_pass, strlen(_ctx.config->wifi_pass));
 
     // Set wifi params from config
-    esp_wifi_set_max_tx_power(_ctx.config->wifi_power);
+    int pow = _ctx.config->wifi_power;
+    if (pow < 2) 
+    { 
+        WARN("Wifi power set below min power (set: %d dBm, min: 2 dBm). Setting 2 dBm.", pow);
+        pow = 2;
+    }
+    if (pow > 20) 
+    { 
+        WARN("Wifi power set above max power (set: %d dBm, max: 20 dBm). Setting 20 dBm.", pow);
+        pow = 20;
+    }
+    esp_wifi_set_max_tx_power(pow * 4); // power units are 0.25 dBm
     esp_wifi_set_country_code(_ctx.config->wifi_country_code, true);
     
     // Configure wifi

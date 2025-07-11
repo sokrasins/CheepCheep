@@ -1,9 +1,9 @@
 #ifndef DEVICE_INTERLOCK_H_
 #define DEVICE_INTERLOCK_H_
 
-#include "device_type_api.h"
+#include "status.h"
+#include "config.h"
 
-// TODO: Unimplemented
-extern device_t interlock;
+status_t interlock_init(const config_t *config);
 
 #endif /*DEVICE_INTERLOCK_H_*/

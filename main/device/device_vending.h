@@ -1,9 +1,9 @@
 #ifndef DEVICE_VENDING_H_
 #define DEVICE_VENDING_H_
 
-#include "device_type_api.h"
+#include "status.h"
+#include "config.h"
 
-// TODO: Unimplemented
-extern device_t vending;
+status_t vending_init(const config_t *config);
 
 #endif /*DEVICE_VENDING_H_*/
