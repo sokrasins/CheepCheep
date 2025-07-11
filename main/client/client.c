@@ -101,13 +101,9 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     status = ws_init(url);
     if (status != STATUS_OK) { return status; }
 
-<<<<<<< HEAD
+    // Init dfu
     status = ota_dfu_init(&config->dfu);
     if (status != STATUS_OK) { WARN("Couldn't start the ota dfu task"); }
-=======
-    // Init dfu
-    ota_dfu_init(&config->dfu);
->>>>>>> origin/error-handling
 
     // Register event handlers
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
@@ -191,19 +187,11 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     switch (evt)
     {
         case WS_OPEN: {
-<<<<<<< HEAD
             // Start the watchdog once the connection is opened
             if (xTimerIsTimerActive(_ctx.ping_wdt) == pdFALSE)
             {
-                INFO("Starting reconnection timer");
+                INFO("Starting ping watchdog");
                 xTimerStart(_ctx.ping_wdt, pdMS_TO_TICKS(10));
-=======
-            // Websocket good now, we can stop the reconnect timer
-            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
-            {
-                INFO("Starting connection watchdog");
-                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
->>>>>>> origin/error-handling
             }
 
             // First thing - send authentication request
@@ -216,12 +204,9 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
         }
 
         case WS_CLOSE:
-<<<<<<< HEAD
             // Nothing happens here. If closed, either:
             // - the websocket will autoreconnect fast, or
             // - the pong watchdog will reset everything
-=======
->>>>>>> origin/error-handling
             ERROR("Client lost websocket connection");
             break;
 
@@ -259,12 +244,8 @@ status_t client_msg_handler(msg_t *msg)
     }
     if (msg->type == MSG_PONG)
     {
-<<<<<<< HEAD
         // Kick the ping watchdog
         xTimerReset(_ctx.ping_wdt, pdMS_TO_TICKS(10));
-=======
-        xTimerReset(_ctx.reconnect_timer, 10);
->>>>>>> origin/error-handling
         DEBUG("Pong received");
         return STATUS_OK;
     }
