@@ -23,7 +23,7 @@ status_t nvstate_init(void);
  *         If an error is encountered while reading the setting, true is 
  *         returned
  */
-bool nvstate_locked_out(void);
+status_t nvstate_locked_out(bool *locked_out);
 
 /**
  * @brief Set the locked out status.

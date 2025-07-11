@@ -126,12 +126,6 @@ static status_t server_cmd_handler(msg_t *msg)
         esp_restart();
         status = STATUS_OK;
     }
-    if (msg->type == MSG_UPDATE_LOCKOUT)
-    {
-        WARN("Updating lockout setting to %u", msg->update_lockout.locked_out);
-        nvstate_locked_out_set(msg->update_lockout.locked_out);
-        status = STATUS_OK;
-    }
 
     return status;
 }

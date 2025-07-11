@@ -47,6 +47,21 @@ status_t door_init(const config_t *config)
 {
     assert(config);
 
+    status_t status;
+    
+    // Make sure a lockout state exists in nvstate
+    bool locked_out;
+    status = nvstate_locked_out(&locked_out);
+    if (status != STATUS_OK)
+    {
+        status = nvstate_locked_out_set(false);
+        if (status != STATUS_OK)
+        {
+            ERROR("Can't initialize the value of locked_out: %d", status);
+            return -STATUS_IO;
+        }
+    }
+
     signal_init(&config->buzzer);
 
     _ctx.config = &config->general;
@@ -76,7 +91,9 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
     if (tags_verify(card->raw) == STATUS_OK)
     {
         WARN("Access granted");
-        if (nvstate_locked_out())
+        bool locked_out = true;
+        nvstate_locked_out(&locked_out);
+        if (locked_out)
         {
             // If "locked out", don't open the door even if the card is good
             msg_t msg = {
@@ -237,6 +254,12 @@ static status_t client_cmd_handler(msg_t *msg)
     {
         WARN("Door Locked!");
         gpio_out_set(OUTPUT_LOCK, false);
+        status = STATUS_OK;
+    }
+    if (msg->type == MSG_UPDATE_LOCKOUT)
+    {
+        WARN("Updating lockout setting to %u", msg->update_lockout.locked_out);
+        nvstate_locked_out_set(msg->update_lockout.locked_out);
         status = STATUS_OK;
     }
 

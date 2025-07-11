@@ -31,38 +31,18 @@ status_t nvstate_init(void)
         return -STATUS_IO;
     }
     
-    // TODO: These are handled differently than the config. Consider 
-    // refactoring these setters.
-    nvs_type_t out_type;
-    if (nvs_find_key(_handle, NVS_TAG_HASH_KEY, &out_type) == ESP_ERR_NVS_NOT_FOUND)
-    {
-        // initialize the key
-        INFO("Setting NVS key %s to default value", NVS_TAG_HASH_KEY);
-        uint8_t tag_hash[16];
-        memset(tag_hash, 0, 16);
-        nvstate_tag_hash_set(tag_hash, 16);
-    }
-
-    if (nvs_find_key(_handle, NVS_LOCKED_OUT_KEY, &out_type) == ESP_ERR_NVS_NOT_FOUND)
-    {
-        // initialize the key
-        INFO("Setting NVS key %s to default value", NVS_LOCKED_OUT_KEY);
-        nvstate_locked_out_set(false);
-    }
-    
     return STATUS_OK;
 }
 
-bool nvstate_locked_out(void)
+status_t nvstate_locked_out(bool *locked_out)
 {
-    uint8_t locked_out = 1;
-    esp_err_t err = nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, &locked_out);
+    esp_err_t err = nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t *)locked_out);
     if (err != ESP_OK)
     {
         ERROR("Couldn't get locked_out parameter: %s", esp_err_to_name(err));
-        return true;
+        return -STATUS_NO_RESOURCE;
     }
-    return (bool) locked_out;
+    return STATUS_OK;
 }
 
 status_t nvstate_locked_out_set(bool locked_out)

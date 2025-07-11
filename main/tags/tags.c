@@ -19,8 +19,25 @@ file_t tag_file = NULL;
 
 status_t tags_init(void)
 {
+    status_t status;
+
+    // Make sure a tag hash exists in nvstate
+    size_t hash_len = 0;
+    uint8_t tag_hash[TAG_HASH_LEN];
+    status = nvstate_tag_hash(tag_hash, &hash_len);
+    if ((status != STATUS_OK) || (hash_len != TAG_HASH_LEN))
+    {
+        memset(tag_hash, 0, TAG_HASH_LEN);
+        status = nvstate_tag_hash_set(tag_hash, TAG_HASH_LEN);
+        if (status != STATUS_OK)
+        {
+            ERROR("Can't initialize the value of the tag hash: %d", status);
+            return -STATUS_IO;
+        }
+    }
+
     // Init file system
-    status_t status = fs_init();
+    status = fs_init();
     if (status != STATUS_OK) { return -STATUS_IO; }
 
     // If the file doesn't exist, create it
@@ -73,7 +90,6 @@ status_t tags_verify(uint32_t card)
 
 status_t tag_sync_handler(msg_t *msg)
 {
-    status_t status;
     assert(msg);
 
     // Only handle sync messages
