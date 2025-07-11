@@ -260,10 +260,10 @@ int _set_txpow(int argc, char **argv)
 {
     if (argc == 2)
     {
-        printf("TX power setting not implemented\n");
-        //int pow = atoi(argv[1]);
-        //_config.client.net.wifi_power = pow;
-        //nvstate_config_set(&_config);
+        printf("Setting TX power\n");
+        int pow = atoi(argv[1]);
+        _config.client.net.wifi_power = pow;
+        nvstate_config_set(&_config);
     }
     return 0;
 }
