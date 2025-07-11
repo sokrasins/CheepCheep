@@ -50,7 +50,18 @@ status_t ws_init(char *url)
     };
 
     _ctx.client = esp_websocket_client_init(&ws_cfg);
-    esp_websocket_register_events(_ctx.client, WEBSOCKET_EVENT_ANY, ws_evt_cb, (void *)&_ctx.client);
+    if (_ctx.client == NULL)
+    {
+        ERROR("Couldn't initialize the websocket client");
+        return -STATUS_IO;
+    }
+
+    esp_err_t err = esp_websocket_register_events(_ctx.client, WEBSOCKET_EVENT_ANY, ws_evt_cb, (void *)&_ctx.client);
+    if (err != ESP_OK)
+    {
+        ERROR("Unable to register websocket event handler: %s", esp_err_to_name(err));
+        return -STATUS_IO;
+    }
 
     return STATUS_OK;
 }
@@ -63,7 +74,11 @@ status_t ws_deinit(void)
 
 status_t ws_open(void)
 {
-    esp_websocket_client_start(_ctx.client);
+    esp_err_t err = esp_websocket_client_start(_ctx.client);
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't open websocket: %s", esp_err_to_name(err));
+    }
     return STATUS_OK;
 }
 
@@ -95,6 +110,7 @@ status_t ws_send(cJSON *msg)
         {
             ERROR("The client is NULL, but status indicates it's connected. Setting disconnected state");
             _ctx.connected = false;
+            return -STATUS_NO_RESOURCE;
         }
 
         char *pkt = cJSON_PrintUnformatted(msg);
@@ -105,7 +121,12 @@ status_t ws_send(cJSON *msg)
         else
         {
             INFO("--> %.*s", strlen(pkt), pkt);
-            esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
+            int rc = esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
+            if (rc < 0) // TODO: Check for rc < strlen(pkt)
+            {
+                ERROR("Couldn't send message");
+                return -STATUS_IO;
+            }
             return STATUS_OK;
         }
     }
@@ -163,7 +184,11 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
             INFO("<-- %.*s", data->data_len, (char *)data->data_ptr);
         }
 
-        // Try to parse a json payload. If we succeed, then send it to be parsed further.
+        // Try to parse a json payload. If we succeed, then send it to be 
+        // parsed further.
+        // TODO: Race condition here? What happens if another message comes in 
+        // whle the first is still being handled? Can this handler be 
+        // re-entered? Or does the 2nd message get dropped?
         cJSON *msg = cJSON_Parse(data->data_ptr);
         if (msg) 
         {

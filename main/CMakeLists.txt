@@ -46,6 +46,7 @@ INCLUDE_DIRS
     "console"
     )
 
+target_compile_options(${COMPONENT_LIB} PRIVATE "-Wall" "-Wextra" "-Werror")
 
 # This will include the contents of the folder into the file system. This only 
 # applies to the binary for flashing, not the dfu-capable image.

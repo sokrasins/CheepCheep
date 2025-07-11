@@ -89,20 +89,27 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     );
     if (_ctx.ping_wdt == NULL) { return -STATUS_NOMEM; }
 
-    // Build the uri for the websocket server
+    // Init net
     status = net_init(&config->net);
+    if (status != STATUS_OK) { return status; }
 
+    // Build the websocket uri and init ws
     char url[128];
     uint8_t mac[6];
     net_get_mac(mac);
     client_build_uri(device_type, _ctx.config->ws_url, mac, url);
-
     status = ws_init(url);
     if (status != STATUS_OK) { return status; }
 
+<<<<<<< HEAD
     status = ota_dfu_init(&config->dfu);
     if (status != STATUS_OK) { WARN("Couldn't start the ota dfu task"); }
+=======
+    // Init dfu
+    ota_dfu_init(&config->dfu);
+>>>>>>> origin/error-handling
 
+    // Register event handlers
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
     net_evt_cb_register(NET_EVT_CONNECT, (void *)&_ctx, net_evt_cb);
     net_evt_cb_register(NET_EVT_DISCONNECT, (void *)&_ctx, net_evt_cb);
@@ -131,11 +138,14 @@ status_t client_handler_register(client_cmd_handler_t handler)
 
 status_t client_send_msg(msg_t *msg)
 {
-    status_t status;
+    status_t status = -STATUS_NOMEM;
     cJSON *root = cJSON_CreateObject();
-    msg_to_cJSON(msg, root);
-    status = ws_send(root);
-    cJSON_Delete(root);
+    if (root)
+    {
+        msg_to_cJSON(msg, root);
+        status = ws_send(root);
+        cJSON_Delete(root);
+    }
     return status;
 }
 
@@ -181,11 +191,19 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     switch (evt)
     {
         case WS_OPEN: {
+<<<<<<< HEAD
             // Start the watchdog once the connection is opened
             if (xTimerIsTimerActive(_ctx.ping_wdt) == pdFALSE)
             {
                 INFO("Starting reconnection timer");
                 xTimerStart(_ctx.ping_wdt, pdMS_TO_TICKS(10));
+=======
+            // Websocket good now, we can stop the reconnect timer
+            if (xTimerIsTimerActive(_ctx.reconnect_timer) == pdFALSE)
+            {
+                INFO("Starting connection watchdog");
+                xTimerStart(_ctx.reconnect_timer, portMAX_DELAY);
+>>>>>>> origin/error-handling
             }
 
             // First thing - send authentication request
@@ -198,9 +216,12 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
         }
 
         case WS_CLOSE:
+<<<<<<< HEAD
             // Nothing happens here. If closed, either:
             // - the websocket will autoreconnect fast, or
             // - the pong watchdog will reset everything
+=======
+>>>>>>> origin/error-handling
             ERROR("Client lost websocket connection");
             break;
 
@@ -238,8 +259,12 @@ status_t client_msg_handler(msg_t *msg)
     }
     if (msg->type == MSG_PONG)
     {
+<<<<<<< HEAD
         // Kick the ping watchdog
         xTimerReset(_ctx.ping_wdt, pdMS_TO_TICKS(10));
+=======
+        xTimerReset(_ctx.reconnect_timer, 10);
+>>>>>>> origin/error-handling
         DEBUG("Pong received");
         return STATUS_OK;
     }

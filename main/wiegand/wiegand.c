@@ -62,6 +62,8 @@ static void gpio_interrupt_handler(void *args);
 
 status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
 {
+    esp_err_t err;
+
     // TODO: Implement 32-bit mode
     if (encode == WIEG_32_BIT)
     {
@@ -78,27 +80,34 @@ status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
 
     memset(&_ctx.stats, 0, sizeof(wiegand_stats_t));
 
+    // TODO: let bsp manage d0 and d1 config
     // Set up gpio. Wiegand signals begin with a negative edge, so detect those 
     // for new bits
-    gpio_set_direction(d0, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(d0, GPIO_FLOATING);
-    gpio_set_intr_type(d0, GPIO_INTR_NEGEDGE);
+    err = gpio_set_direction(d0, GPIO_MODE_INPUT);
+    err |= gpio_set_pull_mode(d0, GPIO_FLOATING);
+    err |= gpio_set_intr_type(d0, GPIO_INTR_NEGEDGE);
+    if (err != ESP_OK) { ERROR("Invalid settings for wiegand pin d0 (pin %u)", d0); return -STATUS_INVAL; }
 
     gpio_set_direction(d1, GPIO_MODE_INPUT);
     gpio_set_pull_mode(d1, GPIO_FLOATING);
     gpio_set_intr_type(d1, GPIO_INTR_NEGEDGE);
+    if (err != ESP_OK) { ERROR("Invalid settings for wiegand pin d1 (pin %u)", d1); return -STATUS_INVAL; }
 
     // Set up the pin ISRs. The ctx provided defines the bit that each ISR adds 
     // to the card data.
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(d0, gpio_interrupt_handler, (void *)&bit_0);
-    gpio_isr_handler_add(d1, gpio_interrupt_handler, (void *)&bit_1);
+    err = gpio_install_isr_service(0); // No flags, check the ISR priority
+    if (err != ESP_OK) { ERROR("Error installing isr service: %s", esp_err_to_name(err)); return -STATUS_NO_RESOURCE; }
+    err = gpio_isr_handler_add(d0, gpio_interrupt_handler, (void *)&bit_0);
+    if (err != ESP_OK) { ERROR("Couldn't add d0 isr handler: %s", esp_err_to_name(err)); return -STATUS_NO_RESOURCE; }
+    err = gpio_isr_handler_add(d1, gpio_interrupt_handler, (void *)&bit_1);
+    if (err != ESP_OK) { ERROR("Couldn't add d1 isr handler: %s", esp_err_to_name(err)); return -STATUS_NO_RESOURCE; }
 
     // Set up queue for new bits and start task
     _ctx.pin_q = xQueueCreate(_ctx.fmt->total_bits, sizeof(int));
+    if (_ctx.pin_q == NULL) { ERROR("Couldn't create the pin queue"); return -STATUS_NOMEM; }
     
     // Make task
-    xTaskCreate(
+    BaseType_t ret = xTaskCreate(
         wieg_task, 
         WIEGAND_TASK_NAME, 
         WIEGAND_TASK_STACK, 
@@ -106,6 +115,7 @@ status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
         WIEGAND_TASK_PRIO, 
         NULL
     );
+    if (ret != pdPASS) { return -STATUS_NOMEM; }
 
     return STATUS_OK;
 }
@@ -211,6 +221,7 @@ void wieg_task(void *params)
 
 static void bits_to_card(const wieg_fmt_desc_t *fmt, uint32_t bits, card_t *card)
 {
+    assert(fmt);
     assert(card);
 
     card->raw = 0;

@@ -35,7 +35,8 @@ status_t fs_init(void)
         return -STATUS_IO;
     }
 
-    size_t total = 0, used = 0;
+    size_t total = 0; 
+    size_t used = 0;
     ret = esp_littlefs_info(conf.partition_label, &total, &used);
     if (ret != ESP_OK) 
     {
@@ -53,9 +54,10 @@ status_t fs_init(void)
 file_t fs_open(const char *name, const char *type)
 {
     char path[64];
-    int rc = sprintf(path, "%s/%s", FS_BASE_PATH, name);
-    if (rc > 64)
+    int rc = snprintf(path, 64, "%s/%s", FS_BASE_PATH, name);
+    if (rc > 64 || rc < 0)
     {
+        ERROR("Error opening file: %d", rc);
         return NULL;
     }
     
@@ -67,34 +69,48 @@ status_t fs_read(file_t file, char *data, size_t chars)
     char *ret = fgets(data, chars, (FILE *) file);
     if (ret != data)
     {
+        ERROR("Error reading file");
         return -STATUS_IO;
     }
 
     return STATUS_OK;
 }
 
-status_t fs_readuntil(file_t file, char *data, char limit)
+status_t fs_readuntil(file_t file, char *data, size_t data_bytes, char limit)
 {
+    assert(file);
+    assert(data);
+
     char c;
+    size_t bytes = 0;
     do {
+        if (bytes >= data_bytes)
+        {
+            return -STATUS_NOMEM;
+        }
+
         c = fgetc(file);
         if (c == (char)255)
         {
             return -STATUS_EOF;
         }
 
-        *data = c;
-        data++;
+        data[bytes] = c;
+        bytes++;
     } while (c != limit);
 
     return STATUS_OK;
 }
 
-status_t fs_write(file_t file, char *data, size_t chars)
+status_t fs_write_str(file_t file, char *data)
 {
+    assert(file);
+    assert(data);
+
     int rc = fputs(data, (FILE *) file);
     if (rc < 0)
     {
+        ERROR("Error writing to file: %d", rc);
         return -STATUS_IO;
     }
 
@@ -103,24 +119,43 @@ status_t fs_write(file_t file, char *data, size_t chars)
 
 void fs_rewind(file_t file)
 {
+    assert(file);
     rewind(file);
 }
 
 status_t fs_close(file_t file)
 {
+    assert(file);
+
     int rc = fclose((FILE *) file);
-    return rc == 0 ? STATUS_OK : -STATUS_NOFILE;
+    if (rc != 0)
+    {
+        ERROR("Error closing file: %d", rc);
+        return -STATUS_IO;
+    }
+
+    return STATUS_OK;
 }
 
 status_t fs_rm(const char *name)
 {
-    char path[64];
-    sprintf(path, "%s/%s", FS_BASE_PATH, name);
+    assert(name);
 
-    int rc = remove(path);
+    char path[64];
+    int rc = 0;
+
+    rc = snprintf(path, 64, "%s/%s", FS_BASE_PATH, name);
+    if (rc > 64 || rc < 0)
+    {
+        ERROR("Error appending path: %d bytes required", rc);
+        return -STATUS_NOMEM;
+    }
+
+    rc = remove(path);
     if (rc != 0)
     {
-        return rc;
+        ERROR("Error deleting file: %d", rc);
+        return -STATUS_IO;
     }
 
     return STATUS_OK;
@@ -128,8 +163,18 @@ status_t fs_rm(const char *name)
 
 bool fs_exists(const char *name)
 {
+    assert(name);
+    
+    int rc = 0;
     struct stat st;
     char path[64];
-    sprintf(path, "%s/%s", FS_BASE_PATH, name);
+    
+    rc = sprintf(path, "%s/%s", FS_BASE_PATH, name);
+    if (rc > 64 || rc < 0)
+    {
+        ERROR("Error appending path: %d bytes required", rc);
+        return -STATUS_NOMEM;
+    }
+
     return stat(path, &st) == 0;
 }

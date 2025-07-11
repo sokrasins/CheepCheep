@@ -56,14 +56,24 @@ status_t nvstate_init(void)
 bool nvstate_locked_out(void)
 {
     uint8_t locked_out = 1;
-    nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, &locked_out);
+    esp_err_t err = nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, &locked_out);
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't get locked_out parameter: %s", esp_err_to_name(err));
+        return true;
+    }
     return (bool) locked_out;
 }
 
 status_t nvstate_locked_out_set(bool locked_out)
 {
     esp_err_t err = nvs_set_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t) locked_out); 
-    return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't set locked_out parameter: %s", esp_err_to_name(err));
+        return -STATUS_NO_RESOURCE;
+    }
+    return STATUS_OK;
 }
 
 status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
@@ -72,7 +82,12 @@ status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
 
     *len = TAG_HASH_LEN;
     esp_err_t err = nvs_get_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
-    return err == ESP_OK ? STATUS_OK : -STATUS_NO_RESOURCE;
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't get tag_hash parameter: %s", esp_err_to_name(err));
+        return -STATUS_NO_RESOURCE;
+    }
+    return STATUS_OK;
 }
 
 status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
@@ -80,7 +95,12 @@ status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
     assert(tag_hash);
 
     esp_err_t err = nvs_set_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
-    return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't set tag_hash parameter: %s", esp_err_to_name(err));
+        return -STATUS_NO_RESOURCE;
+    }
+    return STATUS_OK;
 }
 
 status_t nvstate_config(config_t *config)
@@ -89,7 +109,12 @@ status_t nvstate_config(config_t *config)
 
     size_t bytes = sizeof(config_t);
     esp_err_t err = nvs_get_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, &bytes);
-    return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't get config parameter: %s", esp_err_to_name(err));
+        return -STATUS_NO_RESOURCE;
+    }
+    return STATUS_OK;
 }
 
 status_t nvstate_config_set(const config_t *config)
@@ -97,5 +122,10 @@ status_t nvstate_config_set(const config_t *config)
     assert(config);
 
     esp_err_t err = nvs_set_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, sizeof(config_t));
-    return err == ESP_OK ? STATUS_OK : STATUS_NO_RESOURCE;
+    if (err != ESP_OK)
+    {
+        ERROR("Couldn't set config parameter: %s", esp_err_to_name(err));
+        return -STATUS_NO_RESOURCE;
+    }
+    return STATUS_OK;
 }

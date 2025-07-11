@@ -37,6 +37,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
 status_t net_init(const config_network_t *config)
 {
+    assert(config);
+    esp_err_t err;
+
     if (strlen(config->wifi_ssid) == 0)
     {
         ERROR("No Wifi SSID provided, please set.");
@@ -56,40 +59,75 @@ status_t net_init(const config_network_t *config)
         _ctx.handlers[i].cb = NULL;
     }
 
+    // Set log levels of the wifi libs
     esp_log_level_set("wifi", ESP_LOG_DEBUG);
     esp_log_level_set("wifi_init", ESP_LOG_DEBUG);
     esp_log_level_set("esp_netif_handlers", ESP_LOG_DEBUG);
 
     // Set up the itf
-    esp_netif_init();
-    esp_event_loop_create_default();
+    err = esp_netif_init();
+    if (err != ESP_OK) 
+    {
+        ERROR("Can't initialize netif: %s", esp_err_to_name(err));
+        return -STATUS_IO;
+    }
+
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK)
+    {
+        ERROR("Can't create event loop: %s", esp_err_to_name(err));
+        if (err != ESP_ERR_INVALID_STATE) { return -STATUS_IO; };
+    }
+
+    // Call will assert if misconfigured
     esp_netif_create_default_wifi_sta();
     
     // Start wifi
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_initiation);
+    err = esp_wifi_init(&wifi_initiation);
+    if (err != ESP_OK) 
+    {
+        ERROR("Can't initialize wifi: %s", esp_err_to_name(err));
+        return -STATUS_IO;
+    }
 
     // Run net task, ready to handle network state changes
-    xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, &_ctx.net_task_handle);
+    BaseType_t ret = xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, &_ctx.net_task_handle);
+    if (ret != pdPASS)
+    {
+        ERROR("Couldn't create network task");
+        return -STATUS_NOMEM;
+    }
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
 
     // Register our event handler
-    esp_event_handler_instance_register(
+    err = esp_event_handler_instance_register(
         WIFI_EVENT,
         ESP_EVENT_ANY_ID,
         &event_handler,
         NULL,
         &instance_any_id
     );
-    esp_event_handler_instance_register(
+    if (err != ESP_OK)
+    {
+        ERROR("Can't register wifi event handler: %s", esp_err_to_name(err));
+        return -STATUS_UNAVAILABLE;
+    }
+
+    err = esp_event_handler_instance_register(
         IP_EVENT,
         IP_EVENT_STA_GOT_IP,
         &event_handler,
         NULL,
         &instance_got_ip
     );
+    if (err != ESP_OK)
+    {
+        ERROR("Can't register ip event handler: %s", esp_err_to_name(err));
+        return -STATUS_UNAVAILABLE;
+    }
 
     // Set up wifi config
     wifi_config_t wifi_config = {

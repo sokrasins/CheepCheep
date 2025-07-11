@@ -19,7 +19,9 @@ status_t nvstate_init(void);
 /**
  * @brief Get lockout status. This indicates if the door lock is explicitly 
  * locked out by the server (and shouldn't open on a successful badge read)
- * @return true if "locked out", false otherwise
+ * @return true if "locked out", false if not.
+ *         If an error is encountered while reading the setting, true is 
+ *         returned
  */
 bool nvstate_locked_out(void);
 

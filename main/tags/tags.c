@@ -19,6 +19,10 @@ file_t tag_file = NULL;
 
 status_t tags_init(void)
 {
+    // Init file system
+    status_t status = fs_init();
+    if (status != STATUS_OK) { return -STATUS_IO; }
+
     // If the file doesn't exist, create it
     if (!fs_exists(TAGS_FILENAME))
     {
@@ -27,21 +31,12 @@ status_t tags_init(void)
     }
 
     tag_file = fs_open(TAGS_FILENAME, "r");
-    if (tag_file == NULL)
-    {
-        ERROR("Couldn't open %s", TAGS_FILENAME);
-        return -STATUS_NOFILE;
-    }
+    if (tag_file == NULL) { return -STATUS_NOFILE; }
 
-    // When new firmware is written the tags file is lost, but the nvstate 
-    // partition is usually untouched (unless the flash is explicitly erased). 
-    // In this case, a sync message with the same tags list will be rejected 
-    // until a change is made to the list (and thus changing the hash).
-    //
     // Here we check if the tag file is empty. If so, the hash is cleared so 
     // the sync message can populate the tags list here.
     char card_str[16];
-    if (fs_readline(tag_file, card_str) == -STATUS_EOF)
+    if (fs_readline(tag_file, card_str, 16) == -STATUS_EOF)
     {
         uint8_t tag_hash[TAG_HASH_LEN];
         memset(tag_hash, 0, TAG_HASH_LEN);
@@ -59,7 +54,7 @@ status_t tags_verify(uint32_t card)
     // against card. If EOF is reached before a match is found, no match 
     // exists.
     char card_str[16];
-    status_t status = fs_readline(tag_file, card_str);
+    status_t status = fs_readline(tag_file, card_str, 16);
     while (status != -STATUS_EOF) 
     {
         uint32_t db_card = atoi(card_str);
@@ -69,7 +64,7 @@ status_t tags_verify(uint32_t card)
             fs_rewind(tag_file);
             return STATUS_OK;
         }
-        status = fs_readline(tag_file, card_str);
+        status = fs_readline(tag_file, card_str, 16);
     }
 
     fs_rewind(tag_file);
@@ -78,6 +73,7 @@ status_t tags_verify(uint32_t card)
 
 status_t tag_sync_handler(msg_t *msg)
 {
+    status_t status;
     assert(msg);
 
     // Only handle sync messages
@@ -86,9 +82,9 @@ status_t tag_sync_handler(msg_t *msg)
         // Get the existing hash
         size_t hash_len;
         uint8_t cur_hash[TAG_HASH_LEN];
-        nvstate_tag_hash(cur_hash, &hash_len);
-
+        
         INFO("New authorized card list received");
+        nvstate_tag_hash(cur_hash, &hash_len);
 
         // Only update the tags if the hashes are different
         if (memcmp(cur_hash, msg->sync.hash, TAG_HASH_LEN) != 0)
@@ -101,10 +97,10 @@ status_t tag_sync_handler(msg_t *msg)
             fs_close(tag_file);
             fs_rm(TAGS_FILENAME);
             file_t new_file = fs_open(TAGS_FILENAME, "w");
-            if (new_file == 0)
+            if (new_file == NULL)
             {
                 ERROR("Couldn't save new cards");
-                return STATUS_OK;
+                return STATUS_OK; // Message handled, even though we couldn't save
             }
     
             // Parse the Received JSON. The tags are provided in an array, and 
@@ -113,8 +109,12 @@ status_t tag_sync_handler(msg_t *msg)
             cJSON_ArrayForEach(tag, msg->sync.tags)
             {
                 // We're reformatting: each card is delimited with a line feed.
-                int len = sprintf(file_line, "%d\n", atoi(tag->valuestring));
-                fs_write(new_file, file_line, len);
+                int len = snprintf(file_line, 16, "%d\n", atoi(tag->valuestring));
+                if (len > 16 || len < 0)
+                {
+                    ERROR("Unexpected line length (%d): %s", len, file_line);
+                }
+                fs_write_str(new_file, file_line);
             }
 
             // Reopen the file as read-only
