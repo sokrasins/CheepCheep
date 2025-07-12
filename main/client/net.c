@@ -7,11 +7,18 @@
 
 #include "esp_wifi.h"
 
-#define WIFI_RETRIES         5U
-#define NET_EVT_HANDLERS_NUM 10
+#define WIFI_RETRIES            5U
+#define NET_EVT_HANDLERS_NUM    10
 
 #define WIFI_CONNECTED_BIT      BIT0
 #define WIFI_DISCONNECTED_BIT   BIT1
+
+// Task config
+#define NET_TASK_NAME           "Net_Task"
+#define NET_TASK_STACK_SIZE     4096U
+#define NET_TASK_PRIO           3U
+static StackType_t net_stack[NET_TASK_STACK_SIZE];
+static StaticTask_t net_task_buf;
 
 typedef struct {
     net_evt_t evt;
@@ -92,12 +99,15 @@ status_t net_init(const config_network_t *config)
     }
 
     // Run net task, ready to handle network state changes
-    BaseType_t ret = xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, &_ctx.net_task_handle);
-    if (ret != pdPASS)
-    {
-        ERROR("Couldn't create network task");
-        return -STATUS_NOMEM;
-    }
+    _ctx.net_task_handle = xTaskCreateStatic(
+        net_task, 
+        NET_TASK_NAME, 
+        NET_TASK_STACK_SIZE, 
+        (void *)&_ctx,
+        NET_TASK_PRIO, 
+        net_stack,
+        &net_task_buf
+    );
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;

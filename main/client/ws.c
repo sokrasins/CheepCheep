@@ -27,6 +27,7 @@ typedef struct {
 static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
 static ws_ctx_t _ctx;
+static cJSON *msg;
 
 status_t ws_init(char *url)
 {
@@ -189,7 +190,8 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         // TODO: Race condition here? What happens if another message comes in 
         // whle the first is still being handled? Can this handler be 
         // re-entered? Or does the 2nd message get dropped?
-        cJSON *msg = cJSON_Parse(data->data_ptr);
+        if (msg != NULL) { cJSON_Delete(msg); }
+        msg = cJSON_Parse(data->data_ptr);
         if (msg) 
         {
             if (_ctx.handler.cb != NULL)
@@ -197,6 +199,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
                 _ctx.handler.cb(WS_MSG, msg, _ctx.handler.ctx);
             }
             cJSON_Delete(msg);
+            msg = NULL;
         }
         break;
 

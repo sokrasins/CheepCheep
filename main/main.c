@@ -27,6 +27,8 @@ static status_t server_cmd_handler(msg_t *msg);
 static int _reboot(int argc, char **argv);
 static int _flash(int argc, char **argv);
 
+void task_info(void);
+
 void app_main(void)
 {
     status_t status;
@@ -114,7 +116,8 @@ void app_main(void)
 
     while(1)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        task_info();
+        vTaskDelay(pdMS_TO_TICKS(60000));
     }
 }
 
@@ -140,4 +143,40 @@ static int _flash(int argc, char **argv)
 {
     sys_enter_boot();
     return 0;
+}
+
+TaskHandle_t xHandle;
+TaskStatus_t xTaskDetails;
+void print_stack_info(char *name)
+{
+    xHandle = xTaskGetHandle(name);
+    if (xHandle)
+    {
+        vTaskGetInfo(
+            xHandle,
+            &xTaskDetails,
+            pdTRUE,
+            eInvalid 
+        );  
+
+        INFO("Task:           %s", name);
+        INFO("    state:      %u", xTaskDetails.eCurrentState);
+        INFO("    runtime:    %u", xTaskDetails.ulRunTimeCounter);
+        INFO("    free stack: %u", xTaskDetails.usStackHighWaterMark);
+    }
+    else
+    {
+        INFO("No handle for task %s", name);
+    }
+}
+
+void task_info(void)
+{
+    size_t heap_size = xPortGetMinimumEverFreeHeapSize();
+    INFO("Current heap: %u", heap_size);
+    print_stack_info("Door_Task");
+    print_stack_info("Wiegand_Task");
+    print_stack_info("Signal_Task");
+    print_stack_info("Net_Task");
+    print_stack_info("DFU_Task");
 }

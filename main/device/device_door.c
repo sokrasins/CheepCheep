@@ -13,9 +13,11 @@
 #include <assert.h>
 
 // Task config
-#define DOOR_TASK_NAME  "Door_Task"
-#define DOOR_TASK_STACK 4096U
-#define DOOR_TASK_PRIO  2U
+#define DOOR_TASK_NAME          "Door_Task"
+#define DOOR_TASK_STACK_SIZE    4096U
+#define DOOR_TASK_PRIO          2U
+static StackType_t door_stack[DOOR_TASK_STACK_SIZE];
+static StaticTask_t door_task_buf;
 
 #define DOOR_TASK_SLEEP 100 //ms
 
@@ -70,8 +72,15 @@ status_t door_init(const config_t *config)
     // Register cb for server requests
     client_handler_register(client_cmd_handler);
 
-    BaseType_t ret = xTaskCreate(door_task, DOOR_TASK_NAME, DOOR_TASK_STACK, (void *)&_ctx, DOOR_TASK_PRIO, NULL);
-    if (ret != pdPASS) { return -STATUS_NOMEM; }
+    xTaskCreateStatic(
+        door_task, 
+        DOOR_TASK_NAME, 
+        DOOR_TASK_STACK_SIZE, 
+        (void *)&_ctx, 
+        DOOR_TASK_PRIO, 
+        door_stack,
+        &door_task_buf
+    );
     
     return STATUS_OK;
 }

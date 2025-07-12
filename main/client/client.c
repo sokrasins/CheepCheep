@@ -19,7 +19,9 @@
 // forcibly reconnecting. The WS will do some auto-reconnecting attempts, so 
 // this time gives the automated mechanism a few chances before the client 
 // intervenes.
-#define CLIENT_WS_PING_WDT_TIMEOUT 50U //s
+#define CLIENT_WS_PING_WDT_TIMEOUT  50U //s
+
+#define CLIENT_SEND_FAIL_THRESH     10U
 
 // Event handlers
 static void client_ping_timer_cb(TimerHandle_t xTimer);
@@ -38,6 +40,7 @@ typedef struct {
     TimerHandle_t ping_wdt;
     client_cmd_handler_t handlers[CLIENT_CMD_HANDLER_MAX];
     TaskHandle_t reset_task_handle;
+    int send_fail_ctr;
 } client_ctx_t;
 
 static client_ctx_t _ctx;
@@ -49,6 +52,7 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     status_t status; 
 
     _ctx.config = &config->portal;
+    _ctx.send_fail_ctr = 0;
 
     if (strlen(_ctx.config->api_secret) == 0)
     {
@@ -141,6 +145,20 @@ status_t client_send_msg(msg_t *msg)
         msg_to_cJSON(msg, root);
         status = ws_send(root);
         cJSON_Delete(root);
+        if (status != STATUS_OK)
+        {
+            _ctx.send_fail_ctr++;
+            if (_ctx.send_fail_ctr > CLIENT_SEND_FAIL_THRESH)
+            {
+                // TODO: Why does ping timer not catch this case?
+                ERROR("Consecutive send failures exceeds threshold, resetting");
+                sys_restart();
+            }
+        }
+        else
+        {
+            _ctx.send_fail_ctr = 0;
+        }
     }
     return status;
 }
@@ -163,6 +181,7 @@ static void client_ping_wdt(TimerHandle_t xTimer)
     //xTaskCreate(client_reset_task, "Reset_Task", 4096, ctx, 5, &client_ctx->reset_task_handle);
                 
     // TODO: Find a more graceful way to hande this error 
+    ERROR("Ping watchdog invoked, resetting deivce");
     sys_restart();
 }
 

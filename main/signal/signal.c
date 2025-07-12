@@ -19,8 +19,11 @@
 
 // Task config
 #define SIGNAL_TASK_NAME        "Signal_Task"
-#define SIGNAL_TASK_STACK       2048U
+#define SIGNAL_TASK_STACK_SIZE  1024U
 #define SIGNAL_TASK_PRIO        2U
+static StackType_t signal_stack[SIGNAL_TASK_STACK_SIZE];
+static StaticTask_t signal_task_buf;
+
 
 // Helpers
 void signal_task(void *params);
@@ -36,15 +39,15 @@ status_t signal_init(const config_buzzer_t *config)
 
     // Most of these signals involve seconds of waiting. We handle these in 
     // it's own task.
-    BaseType_t ret = xTaskCreate(
+    _signal_task_handle = xTaskCreateStatic(
         signal_task, 
         SIGNAL_TASK_NAME, 
-        SIGNAL_TASK_STACK, 
+        SIGNAL_TASK_STACK_SIZE, 
         NULL, 
-        SIGNAL_TASK_PRIO, 
-        &_signal_task_handle
+        SIGNAL_TASK_PRIO,
+        signal_stack, 
+        &signal_task_buf
     );
-    if (ret != pdPASS) { return -STATUS_NOMEM; }
     
     return STATUS_OK;
 }

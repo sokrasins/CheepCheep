@@ -287,7 +287,7 @@ void dfu_task(void *params)
 
 kill_task:
     // Kill the task, it is NOT allowed to return
-    vTaskDelete(ctx->dfu_task_handle);
+    vTaskDelete(NULL);
     while (1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
 

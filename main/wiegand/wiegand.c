@@ -19,9 +19,11 @@
 #define WIEG_TIMEOUT        20U //ms
 
 // Task config
-#define WIEGAND_TASK_NAME   "Wiegand_Task" 
-#define WIEGAND_TASK_STACK  4096U
-#define WIEGAND_TASK_PRIO   2U
+#define WIEGAND_TASK_NAME       "Wiegand_Task" 
+#define WIEGAND_TASK_STACK_SIZE 4096U // TODO: Find out why this is so high (probably some door task thing)
+#define WIEGAND_TASK_PRIO       2U
+static StackType_t wiegand_stack[WIEGAND_TASK_STACK_SIZE];
+static StaticTask_t wiegand_task_buf;
 
 typedef struct {
     int num_swipes;     // Number of ttoal swipes. This counts swipes with bad parity, but not timeouts.
@@ -107,15 +109,15 @@ status_t wieg_init(int d0, int d1, wieg_encoding_t encode)
     if (_ctx.pin_q == NULL) { ERROR("Couldn't create the pin queue"); return -STATUS_NOMEM; }
     
     // Make task
-    BaseType_t ret = xTaskCreate(
+    xTaskCreateStatic(
         wieg_task, 
         WIEGAND_TASK_NAME, 
-        WIEGAND_TASK_STACK, 
-        &_ctx, 
+        WIEGAND_TASK_STACK_SIZE, 
+        (void *)&_ctx, 
         WIEGAND_TASK_PRIO, 
-        NULL
+        wiegand_stack,
+        &wiegand_task_buf
     );
-    if (ret != pdPASS) { return -STATUS_NOMEM; }
 
     return STATUS_OK;
 }
@@ -234,12 +236,12 @@ static bool wieg_is_parity_good(const wieg_fmt_desc_t *fmt, uint32_t bits)
     assert(fmt);
 
     // Calc high parity (which is always even)
-    uint64_t high = bits & fmt->high_mask;
+    uint32_t high = bits & fmt->high_mask;
     bool high_parity = parity(PARITY_EVEN, high);
     if (WIEG_HIGH_PARITY_BIT(fmt, bits) != high_parity) { return false; }
 
     // calc low parity (which is always odd)
-    uint64_t low = bits & fmt->low_mask;
+    uint32_t low = bits & fmt->low_mask;
     bool low_parity = parity(PARITY_ODD, low);
     if (WIEG_LOW_PARITY_BIT(fmt, bits) != low_parity) { return false; }
 
