@@ -123,6 +123,7 @@ status_t ws_send(cJSON *msg)
         {
             INFO("--> %.*s", strlen(pkt), pkt);
             int rc = esp_websocket_client_send_text(_ctx.client, pkt, strlen(pkt), portMAX_DELAY);
+            free(pkt);
             if (rc < 0) // TODO: Check for rc < strlen(pkt)
             {
                 ERROR("Couldn't send message");

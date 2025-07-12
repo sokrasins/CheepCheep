@@ -69,7 +69,11 @@
 			"device_creds.h": "c",
 			"device_config.h": "c",
 			"wiegand_fmt.h": "c",
-			"stat.h": "c"
+			"stat.h": "c",
+			"bitset": "c",
+			"initializer_list": "c",
+			"ranges": "c",
+			"regex": "c"
 		}
 	}
 }
