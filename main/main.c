@@ -301,7 +301,7 @@ void f_PrintHeapHistorico(uint32_t atual) {
             if (heap_history[i] > max) max = heap_history[i];
         }
 
-        printf("Memoria atual: %lu, Min últimos 60s: %lu, Max últimos 60s: %lu\n", atual, min, max);
+        printf("Current memory: %lu, Min last 60s: %lu, Max last 60s: %lu\n", atual, min, max);
 }
 
 void print_mem_chart(uint32_t mem_atual) {
@@ -329,6 +329,7 @@ void f_HeapMonitor(void *pvParameter) {
         heap_trace_init_standalone(trace_record, NUM_RECORDS);
         heap_trace_start(HEAP_TRACE_LEAKS);
 
+        vTaskDelay(pdMS_TO_TICKS(600000)); // Accumulate data for 10 minutes
         vTaskDelay(pdMS_TO_TICKS(600000)); // Accumulate data for 10 minutes
 
         heap_trace_stop();
