@@ -1,12 +1,11 @@
 // Adapted from: https://forums.freertos.org/t/how-i-solved-the-memory-leak-problem-in-a-complex-program-with-many-tasks/23035
 
 #include "debug_mem.h"
+#include "log.h"
 
 #include "sdkconfig.h"
 
 #ifdef CONFIG_HEAP_TRACING
-
-#include "log.h"
 
 #include "esp_heap_trace.h"
 #include "freertos/FreeRTOS.h"
@@ -178,12 +177,12 @@ void f_HeapMonitor(void *pvParameter)
     }
     vTaskDelete(NULL);
 }
+
 #else
 
 void debug_mem_start(void)
 {
     ERROR("Heap tracing is not enabled. Please enable in menuconfig first.");
 }
-
 
 #endif /*CONFIG_HEAP_TRACING*/
