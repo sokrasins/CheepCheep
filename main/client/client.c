@@ -150,7 +150,10 @@ status_t client_send_msg(msg_t *msg)
             _ctx.send_fail_ctr++;
             if (_ctx.send_fail_ctr > CLIENT_SEND_FAIL_THRESH)
             {
-                // TODO: Why does ping timer not catch this case?
+                // TODO: I think this failure mode is caused by a memory leak 
+                // filling the heap, causing the ping watchdog to be unable to 
+                // trigger. Evaluate whether we still need this check after 
+                // testing.
                 ERROR("Consecutive send failures exceeds threshold, resetting");
                 sys_restart();
             }

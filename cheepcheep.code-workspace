@@ -50,18 +50,12 @@
 			"device_secrets.h": "c",
 			"device.h": "c",
 			"cstring": "c",
-			"esp_intr_alloc.h": "c",
-			"event_groups.h": "c",
 			"stddef.h": "c",
 			"ws.h": "c",
 			"string.h": "c",
 			"stdio.h": "c",
 			"client.h": "c",
 			"tags.h": "c",
-			"random": "c",
-			"string": "c",
-			"string_view": "c",
-			"ios": "c",
 			"net.h": "c",
 			"ota_dfu.h": "c",
 			"console.h": "c",
@@ -69,13 +63,6 @@
 			"device_creds.h": "c",
 			"device_config.h": "c",
 			"wiegand_fmt.h": "c",
-			"stat.h": "c",
-			"bitset": "c",
-			"initializer_list": "c",
-			"ranges": "c",
-			"regex": "c",
-			"debug_mem.h": "c",
-			"sdkconfig.h": "c"
 		}
 	}
 }

@@ -188,9 +188,9 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
 
         // Try to parse a json payload. If we succeed, then send it to be 
         // parsed further.
-        // TODO: Race condition here? What happens if another message comes in 
-        // whle the first is still being handled? Can this handler be 
-        // re-entered? Or does the 2nd message get dropped?
+        // TODO: msg is static so that we can make sure it got deleted before 
+        // we allocate new json mem. I think this is not necessary. Examine 
+        // this with heap trace.
         if (msg != NULL) { cJSON_Delete(msg); }
         msg = cJSON_Parse(data->data_ptr);
         if (msg) 

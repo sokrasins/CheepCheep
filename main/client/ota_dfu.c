@@ -286,9 +286,8 @@ void dfu_task(void *params)
     esp_restart();
 
 kill_task:
-    // Kill the task, it is NOT allowed to return
+    // Kill the task
     vTaskDelete(NULL);
-    while (1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 }
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)

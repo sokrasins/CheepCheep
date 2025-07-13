@@ -4,3 +4,4 @@ managed_components
 .devcontainer
 .cache
 main/device_creds*.h
+**/.DS_Store
