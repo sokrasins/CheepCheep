@@ -20,7 +20,7 @@
 
 // Task config
 #define WIEGAND_TASK_NAME       "Wiegand_Task" 
-#define WIEGAND_TASK_STACK_SIZE 4096U // TODO: Find out why this is so high (probably some door task thing)
+#define WIEGAND_TASK_STACK_SIZE 4096U
 #define WIEGAND_TASK_PRIO       2U
 static StackType_t wiegand_stack[WIEGAND_TASK_STACK_SIZE];
 static StaticTask_t wiegand_task_buf;
