@@ -23,6 +23,11 @@
 
 #include "sdkconfig.h"
 
+// Threshold of heap bytes before the system gets reset. Right now the 
+// application idles at around ~150 kB head free, so if the heap falls below 10 
+// kB we're gonna overrun the heap before long.
+#define HEAP_RESET_THRESHOLD 10000U // bytes
+
 const config_t *config;
 
 static status_t server_cmd_handler(msg_t *msg);
@@ -120,9 +125,23 @@ void app_main(void)
     debug_mem_start();
 #endif /*CONFIG_HEAP_TRACING*/
 
+    size_t heap_size = 0;
     while(1)
     {
+        // Wait a minute
         vTaskDelay(pdMS_TO_TICKS(60000));
+
+        // Check to make sure our heap is okay
+        heap_size = xPortGetMinimumEverFreeHeapSize();
+        if (heap_size < HEAP_RESET_THRESHOLD)
+        {
+            ERROR(
+                "Remaining heap (%u bytes) is below minimum threshold (%u bytes), resetting.", 
+                heap_size, 
+                HEAP_RESET_THRESHOLD
+            );
+            sys_restart();
+        }
     }
 }
 
