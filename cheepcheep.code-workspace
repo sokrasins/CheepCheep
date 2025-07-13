@@ -73,7 +73,9 @@
 			"bitset": "c",
 			"initializer_list": "c",
 			"ranges": "c",
-			"regex": "c"
+			"regex": "c",
+			"debug_mem.h": "c",
+			"sdkconfig.h": "c"
 		}
 	}
 }

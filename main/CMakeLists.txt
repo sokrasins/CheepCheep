@@ -22,6 +22,7 @@ SRCS
     "client/ota_dfu.c"
     "console/console.c"
     "util/log.c"
+    "util/debug_mem.c"
 REQUIRES 
     freertos 
     esp_wifi 
