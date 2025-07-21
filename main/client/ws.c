@@ -168,7 +168,7 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         }
         if (_ctx.handler.cb != NULL)
         {
-            _ctx.handler.cb(WS_CLOSE, NULL, _ctx.handler.ctx);
+            _ctx.handler.cb(WS_DISCONNECT, NULL, _ctx.handler.ctx);
         }
         break;
 
@@ -220,6 +220,11 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         // This is sent from the server when: 
         // - the device successfully connects, but isn't authorized
         // - the websocket has been alive for 24 hours
+        if (_ctx.handler.cb != NULL)
+        {
+            _ctx.handler.cb(WS_FINISH, NULL, _ctx.handler.ctx);
+        }
+
         break;
     }
 }
