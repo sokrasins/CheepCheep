@@ -209,6 +209,11 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             break;
 
         case WS_FINISH:
+            // This happens when: 
+            // - the device successfully connects, but isn't authorized
+            //   => in this case, we don't want to attempt to reconnect
+            // - the websocket has been alive for 24 hours
+            //   => in this case we DO want to reconnect
             WARN("Websocket close by server. Reconnect...");
             if (_ctx.server_accepted_auth)
             {
