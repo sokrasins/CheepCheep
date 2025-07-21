@@ -5,7 +5,7 @@
 #include "device_creds.h"
 
 #define CONFIG_DEVICE_TYPE                  DEVICE_DOOR
-#define CONFIG_GEN_FIXED_UNLOCK_DELAY       4
+#define CONFIG_GEN_FIXED_UNLOCK_DELAY       3
 #define CONFIG_DEV_LOG_LEVEL                LOG_DEBUG
 
 //#define CONFIG_DFU_ENABLED                  true
