@@ -217,9 +217,9 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
 
     case WEBSOCKET_EVENT_FINISH:
         WARN("WEBSOCKET_EVENT_FINISH");
-        // TODO: event here
-        // this is sent from the server when the device successfully 
-        // connects, but isn't authorized.
+        // This is sent from the server when: 
+        // - the device successfully connects, but isn't authorized
+        // - the websocket has been alive for 24 hours
         break;
     }
 }

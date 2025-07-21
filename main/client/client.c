@@ -38,6 +38,7 @@ typedef struct {
     TimerHandle_t ping_wdt;
     client_cmd_handler_t handlers[CLIENT_CMD_HANDLER_MAX];
     TaskHandle_t reset_task_handle;
+    bool server_accepted_auth;
 } client_ctx_t;
 
 static client_ctx_t _ctx;
@@ -48,6 +49,9 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
 
     status_t status; 
 
+    // Will get set in the authorization message handler. Until this is set, 
+    // client will not attempt to reconnect on a WS_FINISH event.
+    _ctx.server_accepted_auth = false;
     _ctx.config = &config->portal;
 
     if (strlen(_ctx.config->api_secret) == 0)
@@ -197,11 +201,19 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             break;
         }
 
-        case WS_CLOSE:
+        case WS_DISCONNECT:
             // Nothing happens here. If closed, either:
             // - the websocket will autoreconnect fast, or
             // - the pong watchdog will reset everything
             ERROR("Client lost websocket connection");
+            break;
+
+        case WS_FINISH:
+            WARN("Websocket close by server. Reconnect...");
+            if (_ctx.server_accepted_auth)
+            {
+                ws_open();
+            }
             break;
 
         case WS_MSG:
@@ -248,6 +260,7 @@ status_t client_msg_handler(msg_t *msg)
         if (msg->authorised.authorised)
         {
             DEBUG("Device authorized, sending IP");
+            _ctx.server_accepted_auth = true;
         
             msg_t msg = {
                 .type = MSG_IP_ADDR,
@@ -261,6 +274,7 @@ status_t client_msg_handler(msg_t *msg)
         else
         {
             ERROR("Device is not authorized");
+            _ctx.server_accepted_auth = false;
         }    
         return STATUS_OK;
     }

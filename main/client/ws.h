@@ -6,8 +6,9 @@
 
 typedef enum {
     WS_OPEN,
-    WS_CLOSE,
     WS_MSG,
+    WS_DISCONNECT,
+    WS_FINISH
 } ws_evt_t;
 
 typedef void (*ws_evt_cb_t)(ws_evt_t evt, cJSON *data, void *ctx);
