@@ -1,8 +1,7 @@
 #ifndef DEVICE_VENDING_H_
 #define DEVICE_VENDING_H_
 
-#include "status.h"
-#include "config.h"
+#include "device_type.h"
 
 extern const device_t vending;
 

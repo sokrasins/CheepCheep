@@ -5,12 +5,26 @@
 #include "device_interlock.h"
 #include "device_vending.h"
 
-typedef status_t (*init_t)(const config_t *config);
-typedef status_t (*deinit_t)(void);
+static inline const device_t *device_get(device_type_t type)
+{
+    device_t *device = NULL;
 
-typedef struct {
-    init_t init;
-    deinit_t deinit;
-} device_t;
+    switch (type)
+    {
+        case DEVICE_DOOR:
+            device = &door;
+            break;
+
+        case DEVICE_INTERLOCK:
+            device = &ilock;
+            break;
+
+        case DEVICE_VENDING:
+            device = &vending;
+            break;
+    }
+
+    return device;
+}
 
 #endif /*DEVICE_H_*/

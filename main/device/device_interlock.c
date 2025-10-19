@@ -177,7 +177,6 @@ void ilock_power_control(config_interlock_t *config, bool on)
     }
 }
 
-// timer task
 static void ilock_pwr_update_cb(TimerHandle_t xTimer)
 {
     // TODO check if client is connected

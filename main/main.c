@@ -101,26 +101,15 @@ void app_main(void)
     status = tags_init();
     if (status != STATUS_OK) { ERROR("tags_init failed: %ld", status); }
 
-    switch(config->device_type) {
-        case DEVICE_DOOR:
-            INFO("Initializing door");
-            device = &door;
-            break;
-
-        case DEVICE_INTERLOCK:
-            INFO("Initializing interlock");
-            device = &ilock;
-            break;
-
-        case DEVICE_VENDING:
-            INFO("Initializing vending");
-            device = &vending;
-            break;
-
-        default:
-            ERROR("Invalid device specified: %d.\nCheck configuration and reflash.", config->device_type);
+    // Get the device object
+    device = device_get(config->device_type);
+    if (NULL == device)
+    {
+        ERROR("Invalid device specified: %d.\nCheck configuration and reflash.", config->device_type);
+        while (1); // Trap, can't continue without a device type
     }
 
+    INFO("Initializing device");
     status = device->init(config);
     if (status != STATUS_OK) { ERROR("device init failed: %lu", status); }
 
