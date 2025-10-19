@@ -4,6 +4,6 @@
 #include "status.h"
 #include "config.h"
 
-status_t vending_init(const config_t *config);
+extern const device_t vending;
 
 #endif /*DEVICE_VENDING_H_*/

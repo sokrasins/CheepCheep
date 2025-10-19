@@ -4,6 +4,6 @@
 #include "status.h"
 #include "config.h"
 
-status_t interlock_init(const config_t *config);
+extern const device_t ilock;
 
 #endif /*DEVICE_INTERLOCK_H_*/

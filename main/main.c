@@ -28,7 +28,9 @@
 // kB we're gonna overrun the heap before long.
 #define HEAP_RESET_THRESHOLD 10000U // bytes
 
-const config_t *config;
+const config_t *config = NULL;
+const device_t *device = NULL;
+
 
 static status_t server_cmd_handler(msg_t *msg);
 
@@ -102,22 +104,24 @@ void app_main(void)
     switch(config->device_type) {
         case DEVICE_DOOR:
             INFO("Initializing door");
-            status = door_init(config);
+            device = &door;
             break;
 
         case DEVICE_INTERLOCK:
             INFO("Initializing interlock");
-            status = interlock_init(config);
+            device = &ilock;
             break;
 
         case DEVICE_VENDING:
             INFO("Initializing vending");
-            status = vending_init(config);
+            device = &vending;
             break;
 
         default:
             ERROR("Invalid device specified: %d.\nCheck configuration and reflash.", config->device_type);
     }
+
+    status = device->init(config);
     if (status != STATUS_OK) { ERROR("device init failed: %lu", status); }
 
 #ifdef CONFIG_HEAP_TRACING
@@ -159,6 +163,11 @@ static status_t server_cmd_handler(msg_t *msg)
 
 static int _reboot(int argc, char **argv)
 {
+    if (device != NULL)
+    {
+        device->deinit();
+    }
+
     sys_restart();
     return 0;
 }

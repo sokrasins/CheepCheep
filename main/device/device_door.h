@@ -4,6 +4,6 @@
 #include "status.h"
 #include "config.h"
 
-status_t door_init(const config_t *config);
+extern const device_t door;
 
 #endif /*DEVICE_DOOR_H_*/

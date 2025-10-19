@@ -33,6 +33,8 @@ typedef struct {
 
 // Private
 void door_task(void *params);
+static status_t door_init(const config_t *config);
+static status_t door_deinit(void);
 static void lock_door(void);
 static void unlock_door(void);
 static status_t client_cmd_handler(msg_t *msg);
@@ -43,6 +45,11 @@ static door_ctx_t _ctx = {
     .time_opened = 0,
     .time_unlocked = 0,
     .last_card_id = 0,
+};
+
+const device_t door = {
+    .init = door_init,
+    .deinit = door_deinit,
 };
 
 status_t door_init(const config_t *config)
@@ -82,6 +89,11 @@ status_t door_init(const config_t *config)
         &door_task_buf
     );
     
+    return STATUS_OK;
+}
+
+static status_t door_deinit(void)
+{
     return STATUS_OK;
 }
 
