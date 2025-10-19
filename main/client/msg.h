@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define ILOCK_SESS_ID_BYTES_MAX 32U
+#define CARD_DB_HASH_BYTES_MAX 16U
+
 typedef enum {
     MSG_AUTHENTICATE,
     MSG_AUTHORISED,
@@ -48,7 +51,7 @@ typedef struct {
 } update_lockout_payload_t;
 
 typedef struct {
-    uint8_t hash[16];
+    uint8_t hash[CARD_DB_HASH_BYTES_MAX];
     cJSON *tags; // Special case, pass the JSON array for further parsing to avoid having to copy
 } sync_payload_t;
 
@@ -57,16 +60,16 @@ typedef struct {
 } ilock_sess_start_reqpayload_t;
 
 typedef struct {
-    char session_id[32];
+    char session_id[ILOCK_SESS_ID_BYTES_MAX];
 } ilock_sess_start_rsppayload_t;
 
 typedef struct {
-    char session_id[32];
+    char session_id[ILOCK_SESS_ID_BYTES_MAX];
     float session_kwh; // check
 } ilock_sess_update_payload_t;
 
 typedef struct {
-    char session_id[32];
+    char session_id[ILOCK_SESS_ID_BYTES_MAX];
     float session_kwh; // check
     uint32_t card_id;
 } ilock_sess_end_payload_t;

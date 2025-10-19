@@ -1,6 +1,6 @@
 # CheepCheep
 
-A C-based rewrite of the BeepBeep firmware
+A C-based rewrite of the BeepBeep firmware: https://github.com/membermatters/BeepBeep
 
 ## Building
 
