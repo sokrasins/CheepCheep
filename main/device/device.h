@@ -7,7 +7,7 @@
 
 static inline const device_t *device_get(device_type_t type)
 {
-    device_t *device = NULL;
+    const device_t *device = NULL;
 
     switch (type)
     {
@@ -22,6 +22,9 @@ static inline const device_t *device_get(device_type_t type)
         case DEVICE_VENDING:
             device = &vending;
             break;
+
+        default:
+            // When there's no match, the value of device remains NULL
     }
 
     return device;

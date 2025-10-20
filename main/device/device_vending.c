@@ -13,9 +13,9 @@ static void vending_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
 static vending_ctx_t _ctx;
 
 const device_t vending = {
-    .init = vending_init();
-    .deinit = vending_deinit();
-}
+    .init = vending_init,
+    .deinit = vending_deinit,
+};
 
 static status_t vending_init(const config_t *config)
 {

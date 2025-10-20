@@ -1,8 +1,12 @@
 #include "device_interlock.h"
-#include "log.h"
 #include "wiegand.h"
 #include "client.h"
 #include "signal.h"
+#include "bsp.h"
+#include "log.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include <string.h>
 
@@ -15,8 +19,7 @@ typedef struct {
 } interlock_session_t;
 
 typedef struct {
-    const config_general_t *config;
-    const config_interlock_t *ilock_config;
+    const config_interlock_t *config;
     wieg_evt_handle_t evt_handle;
     interlock_session_t session;
     TimerHandle_t power_update;
@@ -29,19 +32,20 @@ static void ilock_end_session(interlock_session_t *sess);
 static bool ilock_has_session(const interlock_session_t *sess);
 static bool ilock_session_match(const interlock_session_t *sess, char *id);
 static void ilock_pwr_update_cb(TimerHandle_t xTimer);
+void ilock_power_control(const config_interlock_t *config, bool on);
 static status_t client_cmd_handler(msg_t *msg);
 
 static ilock_ctx_t _ctx;
 
 const device_t ilock = {
-    .init = interlock_init;
-    .deinit = interlock_deinit;
+    .init = interlock_init,
+    .deinit = interlock_deinit,
 };
 
 static status_t interlock_init(const config_t *config)
 {
     memset(&_ctx.session, 0x00, sizeof(interlock_session_t));
-    _ctx.config = config->general;
+    _ctx.config = &config->interlock;
     _ctx.evt_handle = wieg_evt_handler_reg(WIEG_EVT_NEWCARD, interlock_handle_swipe, (void *)&_ctx);
 
     // Register cb for server requests
@@ -54,7 +58,7 @@ static status_t interlock_init(const config_t *config)
         NULL, 
         ilock_pwr_update_cb
     );
-    if (_ctx.ping_timer == NULL) { return -STATUS_NOMEM; }
+    if (_ctx.power_update == NULL) { return -STATUS_NOMEM; }
 
     return STATUS_OK;
 }
@@ -62,14 +66,15 @@ static status_t interlock_init(const config_t *config)
 static status_t interlock_deinit(void)
 {
     // TODO: does this finish everything before function has exited?
-    ilock_end_session(&_ctx.ilock_config);   
+    ilock_end_session(&_ctx.session); 
+    return STATUS_OK;  
 }
 
 static void interlock_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
 {
     ilock_ctx_t *ilock_ctx = (ilock_ctx_t *) ctx;
 
-    if (!ilock_has_session(&ilock_ctx->ilock_config))
+    if (!ilock_has_session(&ilock_ctx->session))
     {
         // request a new interlock session
 
@@ -87,7 +92,7 @@ static void interlock_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
 
         }
     }
-    else if (0 == strcmp("system", ilock_ctx->ilock_config.id))
+    else if (0 == strcmp("system", ilock_ctx->session.id))
     {
         // turn off the interlock if it was manually turned on by the system
 
@@ -101,13 +106,13 @@ static void interlock_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
             ERROR("Failed to turn off interlock (%u): %d", card->raw, status);
             signal_alert();
         }
-        ilock_end_session(&ilock_ctx->ilock_config);
+        ilock_end_session(&ilock_ctx->session);
 
     }
     else
     {
         // end the current interlock session
-        ilock_end_session(&ilock_ctx->ilock_config);
+        ilock_end_session(&ilock_ctx->session);
     }
 }
 
@@ -144,12 +149,12 @@ static void ilock_end_session(interlock_session_t *sess)
         sess->card.raw = 0;
         memset(sess->id, 0x00, ILOCK_SESS_ID_BYTES_MAX);
 
-        ilock_power_control(_ctx.ilock_config, false);
+        ilock_power_control(_ctx.config, false);
         // TODO: RGB led state
     }
 }
 
-void ilock_power_control(config_interlock_t *config, bool on)
+void ilock_power_control(const config_interlock_t *config, bool on)
 {
     if (on)
     {
@@ -191,7 +196,7 @@ static void ilock_pwr_update_cb(TimerHandle_t xTimer)
         status_t status = client_send_msg(&msg);
         if (STATUS_OK != status)
         {
-            ERROR("Failed to send interlock update %s: %d", sess->id, status);
+            ERROR("Failed to send interlock update %s: %d", _ctx.session.id, status);
         }
     }
 }
@@ -203,8 +208,8 @@ static status_t client_cmd_handler(msg_t *msg)
     if (msg->type == MSG_UNLOCK)
     {
         WARN("Turning on interlock from manual request!");
-        ilock_power_control(&_ctx.ilock_config, true);
-        strcpy(&_ctx.ilock_config.id, "system");
+        ilock_power_control(_ctx.config, true);
+        strcpy(_ctx.session.id, "system");
         signal_action(); 
 
         status = STATUS_OK;
@@ -218,11 +223,11 @@ static status_t client_cmd_handler(msg_t *msg)
     }
     if (msg->type == MSG_ILOCK_SESS_START)
     {
-        WARN("Turning on interlock from new session!")
+        WARN("Turning on interlock from new session!");
         memcpy(_ctx.session.id, msg->ilock_start_rsp.session_id, ILOCK_SESS_ID_BYTES_MAX);
         _ctx.session.kwh = 0;
 
-        ilock_power_control(&_ctx.ilock_config, true);
+        ilock_power_control(_ctx.config, true);
         signal_action();
 
         status = STATUS_OK;
