@@ -1,7 +1,7 @@
 // First take in the project-defined config
 #include "device_config.h"
 
-// Then take in the default values. Any values not defined at the project level 
+// Then take in the default values. Any values not defined at the project level
 // will be defined by the defaults.
 #include "config_defaults.h"
 

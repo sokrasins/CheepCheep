@@ -4,7 +4,8 @@
 #include "config.h"
 #include "cJSON.h"
 
-typedef enum {
+typedef enum
+{
     WS_OPEN,
     WS_CLOSE,
     WS_MSG,

@@ -10,43 +10,48 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#define CLIENT_CMD_HANDLER_MAX      10U
+#define CLIENT_CMD_HANDLER_MAX 10U
 
 // The server starts to send unparsable messages when the period is 10s
-#define CLIENT_PING_PERIOD          9U //s
+#define CLIENT_PING_PERIOD 9U // s
 
-// Number of seconds to tolerate after a websocket disconnection before 
-// forcibly reconnecting. The WS will do some auto-reconnecting attempts, so 
-// this time gives the automated mechanism a few chances before the client 
+// Number of seconds to tolerate after a websocket disconnection before
+// forcibly reconnecting. The WS will do some auto-reconnecting attempts, so
+// this time gives the automated mechanism a few chances before the client
 // intervenes.
-#define CLIENT_WS_PING_WDT_TIMEOUT  120U //s
+#define CLIENT_WS_PING_WDT_TIMEOUT 120U // s
 
 // Event handlers
 static void client_ping_timer_cb(TimerHandle_t xTimer);
 static void client_ping_wdt(TimerHandle_t xTimer);
 static void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx);
 static void net_evt_cb(net_evt_t evt, void *ctx);
-status_t client_msg_handler(msg_t *msg);
+status_t    client_msg_handler(msg_t *msg);
 
 // Helpers
-void client_build_uri(device_type_t device, const char *url, uint8_t *mac, char *uri);
+void client_build_uri(device_type_t device,
+                      const char   *url,
+                      uint8_t      *mac,
+                      char         *uri);
 void client_reset_task(void *params);
 
-typedef struct {
+typedef struct
+{
     const config_portal_t *config;
-    TimerHandle_t ping_timer;
-    TimerHandle_t ping_wdt;
-    client_cmd_handler_t handlers[CLIENT_CMD_HANDLER_MAX];
-    TaskHandle_t reset_task_handle;
+    TimerHandle_t          ping_timer;
+    TimerHandle_t          ping_wdt;
+    client_cmd_handler_t   handlers[CLIENT_CMD_HANDLER_MAX];
+    TaskHandle_t           reset_task_handle;
 } client_ctx_t;
 
 static client_ctx_t _ctx;
 
-status_t client_init(const config_client_t *config, device_type_t device_type)
+status_t
+client_init (const config_client_t *config, device_type_t device_type)
 {
     assert(config);
 
-    status_t status; 
+    status_t status;
 
     _ctx.config = &config->portal;
 
@@ -61,7 +66,7 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
         return -STATUS_BAD_CONFIG;
     }
 
-    for (int i=0; i<CLIENT_CMD_HANDLER_MAX; i++)
+    for (int i = 0; i < CLIENT_CMD_HANDLER_MAX; i++)
     {
         _ctx.handlers[i] = NULL;
     }
@@ -69,41 +74,53 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     client_handler_register(client_msg_handler);
 
     // Create ping timer - sends periodic pings to host
-    _ctx.ping_timer = xTimerCreate(
-        "Ping_Timer", 
-        pdMS_TO_TICKS(1000 * CLIENT_PING_PERIOD), 
-        true, 
-        NULL, 
-        client_ping_timer_cb
-    );
-    if (_ctx.ping_timer == NULL) { return -STATUS_NOMEM; }
+    _ctx.ping_timer = xTimerCreate("Ping_Timer",
+                                   pdMS_TO_TICKS(1000 * CLIENT_PING_PERIOD),
+                                   true,
+                                   NULL,
+                                   client_ping_timer_cb);
+    if (_ctx.ping_timer == NULL)
+    {
+        return -STATUS_NOMEM;
+    }
 
-    // Create ping watchdog - if a pong is not received within the timer 
+    // Create ping watchdog - if a pong is not received within the timer
     // length, the system is reset.
-    _ctx.ping_wdt = xTimerCreate(
-        "Ping_watchdog", 
-        pdMS_TO_TICKS(1000 * CLIENT_WS_PING_WDT_TIMEOUT), 
-        false, 
-        NULL, 
-        client_ping_wdt
-    );
-    if (_ctx.ping_wdt == NULL) { return -STATUS_NOMEM; }
+    _ctx.ping_wdt
+        = xTimerCreate("Ping_watchdog",
+                       pdMS_TO_TICKS(1000 * CLIENT_WS_PING_WDT_TIMEOUT),
+                       false,
+                       NULL,
+                       client_ping_wdt);
+    if (_ctx.ping_wdt == NULL)
+    {
+        return -STATUS_NOMEM;
+    }
 
     // Init net
     status = net_init(&config->net);
-    if (status != STATUS_OK) { return status; }
+    if (status != STATUS_OK)
+    {
+        return status;
+    }
 
     // Build the websocket uri and init ws
-    char url[128];
+    char    url[128];
     uint8_t mac[6];
     net_get_mac(mac);
     client_build_uri(device_type, _ctx.config->ws_url, mac, url);
     status = ws_init(url);
-    if (status != STATUS_OK) { return status; }
+    if (status != STATUS_OK)
+    {
+        return status;
+    }
 
     // Init dfu
     status = ota_dfu_init(&config->dfu);
-    if (status != STATUS_OK) { WARN("Couldn't start the ota dfu task"); }
+    if (status != STATUS_OK)
+    {
+        WARN("Couldn't start the ota dfu task");
+    }
 
     // Register event handlers
     ws_evt_cb_register(ws_evt_cb, (void *)&_ctx);
@@ -113,15 +130,17 @@ status_t client_init(const config_client_t *config, device_type_t device_type)
     return STATUS_OK;
 }
 
-status_t client_open(void)
+status_t
+client_open (void)
 {
     net_start();
     return STATUS_OK;
 }
 
-status_t client_handler_register(client_cmd_handler_t handler)
+status_t
+client_handler_register (client_cmd_handler_t handler)
 {
-    for (int i=0; i<CLIENT_CMD_HANDLER_MAX; i++)
+    for (int i = 0; i < CLIENT_CMD_HANDLER_MAX; i++)
     {
         if (_ctx.handlers[i] == NULL)
         {
@@ -132,10 +151,11 @@ status_t client_handler_register(client_cmd_handler_t handler)
     return -STATUS_NOMEM;
 }
 
-status_t client_send_msg(msg_t *msg)
+status_t
+client_send_msg (msg_t *msg)
 {
     status_t status = -STATUS_NOMEM;
-    cJSON *root = cJSON_CreateObject();
+    cJSON   *root   = cJSON_CreateObject();
     if (root)
     {
         msg_to_cJSON(msg, root);
@@ -145,7 +165,8 @@ status_t client_send_msg(msg_t *msg)
     return status;
 }
 
-static void client_ping_timer_cb(TimerHandle_t xTimer)
+static void
+client_ping_timer_cb (TimerHandle_t xTimer)
 {
     msg_t msg = {
         .type = MSG_PING,
@@ -153,14 +174,16 @@ static void client_ping_timer_cb(TimerHandle_t xTimer)
     client_send_msg(&msg);
 }
 
-static void client_ping_wdt(TimerHandle_t xTimer)
-{               
+static void
+client_ping_wdt (TimerHandle_t xTimer)
+{
     // If we haven't received a pong within the timeout, reset the board.
     ERROR("Ping watchdog invoked, resetting deivce");
     sys_restart();
 }
 
-static void net_evt_cb(net_evt_t evt, void *ctx)
+static void
+net_evt_cb (net_evt_t evt, void *ctx)
 {
     if (evt == NET_EVT_DISCONNECT)
     {
@@ -173,7 +196,8 @@ static void net_evt_cb(net_evt_t evt, void *ctx)
     }
 }
 
-void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
+void
+ws_evt_cb (ws_evt_t evt, cJSON *data, void *ctx)
 {
     assert(ctx);
 
@@ -191,7 +215,8 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             // First thing - send authentication request
             msg_t msg = {
                 .type = MSG_AUTHENTICATE,
-                .authenticate.secret_key = (char *)client_ctx->config->api_secret,
+                .authenticate.secret_key
+                = (char *)client_ctx->config->api_secret,
             };
             client_send_msg(&msg);
             break;
@@ -204,14 +229,13 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             ERROR("Client lost websocket connection");
             break;
 
-        case WS_MSG:
-        {
+        case WS_MSG: {
             // Parse in-bound message
             msg_t msg;
             msg_from_cJSON(data, &msg);
 
             // Send message to handlers
-            for (int i=0; i<CLIENT_CMD_HANDLER_MAX; i++)
+            for (int i = 0; i < CLIENT_CMD_HANDLER_MAX; i++)
             {
                 if (_ctx.handlers[i] != NULL)
                 {
@@ -226,7 +250,8 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
     }
 }
 
-status_t client_msg_handler(msg_t *msg)
+status_t
+client_msg_handler (msg_t *msg)
 {
     if (msg->type == MSG_PING)
     {
@@ -248,9 +273,9 @@ status_t client_msg_handler(msg_t *msg)
         if (msg->authorised.authorised)
         {
             DEBUG("Device authorized, sending IP");
-        
+
             msg_t msg = {
-                .type = MSG_IP_ADDR,
+                .type                  = MSG_IP_ADDR,
                 .ip_address.ip_address = net_get_ip(),
             };
             client_send_msg(&msg);
@@ -261,19 +286,23 @@ status_t client_msg_handler(msg_t *msg)
         else
         {
             ERROR("Device is not authorized");
-        }    
+        }
         return STATUS_OK;
     }
 
     return -STATUS_INVALID;
 }
 
-void client_build_uri(device_type_t device, const char *url, uint8_t *mac, char *uri)
+void
+client_build_uri (device_type_t device,
+                  const char   *url,
+                  uint8_t      *mac,
+                  char         *uri)
 {
     char dev_str[32];
     char mac_str[32];
 
-    switch(device)
+    switch (device)
     {
         case DEVICE_DOOR:
             strcpy(dev_str, "door");
@@ -286,38 +315,58 @@ void client_build_uri(device_type_t device, const char *url, uint8_t *mac, char 
         case DEVICE_VENDING:
             strcpy(dev_str, "memberbucks");
             break;
-        
+
         default:
             ERROR("Invalid device type: %d", device);
     }
-    
+
     // Assemble the websocket uri
-    sprintf(mac_str, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    sprintf(mac_str,
+            "%02x%02x%02x%02x%02x%02x",
+            mac[0],
+            mac[1],
+            mac[2],
+            mac[3],
+            mac[4],
+            mac[5]);
     INFO("mac: %s", mac_str);
     sprintf(uri, "%s/%s/%s", url, dev_str, mac_str);
     INFO("url: %s", uri);
 }
 
-void client_reset_task(void *params)
+void
+client_reset_task (void *params)
 {
-    status_t status;
-    client_ctx_t *ctx = (client_ctx_t *) params;
+    status_t      status;
+    client_ctx_t *ctx = (client_ctx_t *)params;
 
     INFO("Closing socket");
     status = ws_close();
-    if (status != STATUS_OK) { ERROR("Couldn't stop the websocket"); }
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't stop the websocket");
+    }
 
     INFO("Stopping network");
     status = net_stop();
-    if (status != STATUS_OK) { ERROR("Couldn't stop the network"); }
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't stop the network");
+    }
 
     INFO("Deinit socket");
     status = ws_deinit();
-    if (status != STATUS_OK) { ERROR("Couldn't deinit the websocket"); }
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't deinit the websocket");
+    }
 
     INFO("Deinit network");
     status = net_deinit();
-    if (status != STATUS_OK) { ERROR("Couldn't deinit the network"); }
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't deinit the network");
+    }
 
     // net init
 
@@ -325,8 +374,14 @@ void client_reset_task(void *params)
 
     INFO("Starting network");
     status = net_start();
-    if (status != STATUS_OK) { ERROR("Couldn't start the network"); }
+    if (status != STATUS_OK)
+    {
+        ERROR("Couldn't start the network");
+    }
 
     vTaskDelete(ctx->reset_task_handle);
-    while (1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }

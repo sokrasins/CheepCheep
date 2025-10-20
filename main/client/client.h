@@ -16,4 +16,6 @@ status_t client_handler_register(client_cmd_handler_t handler);
 
 status_t client_send_msg(msg_t *msg);
 
+// TODO: getter for client connection states
+
 #endif /*CLIENT_H_*/

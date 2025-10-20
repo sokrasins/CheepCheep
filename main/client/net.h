@@ -4,7 +4,8 @@
 #include "status.h"
 #include "config.h"
 
-typedef enum {
+typedef enum
+{
     NET_EVT_DISCONNECT,
     NET_EVT_CONNECT,
 } net_evt_t;

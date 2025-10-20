@@ -5,7 +5,8 @@
 #include "config.h"
 
 /**
- * @brief Initialize the signal controller. This module allows signaling on a wiegand card reader.
+ * @brief Initialize the signal controller. This module allows signaling on a
+ * wiegand card reader.
  * @param config the signal-specific configuration
  * @return STATUS_OK: successful
  */

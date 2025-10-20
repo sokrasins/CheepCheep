@@ -17,10 +17,10 @@
 status_t nvstate_init(void);
 
 /**
- * @brief Get lockout status. This indicates if the door lock is explicitly 
+ * @brief Get lockout status. This indicates if the door lock is explicitly
  * locked out by the server (and shouldn't open on a successful badge read)
  * @return true if "locked out", false if not.
- *         If an error is encountered while reading the setting, true is 
+ *         If an error is encountered while reading the setting, true is
  *         returned
  */
 status_t nvstate_locked_out(bool *locked_out);
@@ -33,8 +33,8 @@ status_t nvstate_locked_out(bool *locked_out);
 status_t nvstate_locked_out_set(bool locked_out);
 
 /**
- * @brief Get the current hash of the list of authorized tags. 
- * @param tag_hash memory for the returned tag_hash (must be at least 
+ * @brief Get the current hash of the list of authorized tags.
+ * @param tag_hash memory for the returned tag_hash (must be at least
  * TAG_HASH_LEN bytes in size)
  * @param len number of bytes written to tag_hash
  * @return -STATUS_NO_RESOURCE: Unable to find the tag hash in flash
@@ -50,12 +50,12 @@ status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len);
  */
 status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len);
 
-/** 
+/**
  * @brief Get the current stored config
  * @param config stored config
  * @return -STATUS_NO_RESOURCE: Unable to find a config stored in nvs
  *          STATUS_OK: successful
-*/
+ */
 status_t nvstate_config(config_t *config);
 
 /**

@@ -6,7 +6,8 @@
 
 #include <stdbool.h>
 
-typedef enum {
+typedef enum
+{
     INPUT_AUX1 = 0,
     INPUT_AUX2,
     INPUT_DOOR_SENSOR,
@@ -14,7 +15,8 @@ typedef enum {
     INPUT_INVAL,
 } input_t;
 
-typedef enum {
+typedef enum
+{
     OUTPUT_STATUS_LED = 0,
     OUTPUT_READER_LED,
     OUTPUT_READER_BUZZER,

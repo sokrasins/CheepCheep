@@ -8,7 +8,8 @@
 #define FS_BASE_PATH       "/fs"
 #define FS_PARTITION_LABEL "storage"
 
-status_t fs_init(void)
+status_t
+fs_init (void)
 {
     esp_vfs_littlefs_conf_t conf = {
         .base_path              = FS_BASE_PATH,
@@ -18,32 +19,33 @@ status_t fs_init(void)
     };
 
     esp_err_t ret = esp_vfs_littlefs_register(&conf);
-    if (ret != ESP_OK) 
+    if (ret != ESP_OK)
     {
-        if (ret == ESP_FAIL) 
+        if (ret == ESP_FAIL)
         {
             ERROR("Failed to mount or format filesystem");
-        } 
-        else if (ret == ESP_ERR_NOT_FOUND) 
+        }
+        else if (ret == ESP_ERR_NOT_FOUND)
         {
             ERROR("Failed to find LittleFS partition");
-        } 
-        else 
+        }
+        else
         {
             ERROR("Failed to initialize LittleFS (%s)", esp_err_to_name(ret));
         }
         return -STATUS_IO;
     }
 
-    size_t total = 0; 
-    size_t used = 0;
-    ret = esp_littlefs_info(conf.partition_label, &total, &used);
-    if (ret != ESP_OK) 
+    size_t total = 0;
+    size_t used  = 0;
+    ret          = esp_littlefs_info(conf.partition_label, &total, &used);
+    if (ret != ESP_OK)
     {
-        ERROR("Failed to get LittleFS partition information (%s)", esp_err_to_name(ret));
+        ERROR("Failed to get LittleFS partition information (%s)",
+              esp_err_to_name(ret));
         esp_littlefs_format(conf.partition_label);
-    } 
-    else 
+    }
+    else
     {
         INFO("Partition size: total: %d, used: %d", total, used);
     }
@@ -51,22 +53,24 @@ status_t fs_init(void)
     return STATUS_OK;
 }
 
-file_t fs_open(const char *name, const char *type)
+file_t
+fs_open (const char *name, const char *type)
 {
     char path[64];
-    int rc = snprintf(path, 64, "%s/%s", FS_BASE_PATH, name);
+    int  rc = snprintf(path, 64, "%s/%s", FS_BASE_PATH, name);
     if (rc > 64 || rc < 0)
     {
         ERROR("Error opening file: %d", rc);
         return NULL;
     }
-    
-    return (file_t) fopen(path, type);
+
+    return (file_t)fopen(path, type);
 }
 
-status_t fs_read(file_t file, char *data, size_t chars)
+status_t
+fs_read (file_t file, char *data, size_t chars)
 {
-    char *ret = fgets(data, chars, (FILE *) file);
+    char *ret = fgets(data, chars, (FILE *)file);
     if (ret != data)
     {
         ERROR("Error reading file");
@@ -76,14 +80,16 @@ status_t fs_read(file_t file, char *data, size_t chars)
     return STATUS_OK;
 }
 
-status_t fs_readuntil(file_t file, char *data, size_t data_bytes, char limit)
+status_t
+fs_readuntil (file_t file, char *data, size_t data_bytes, char limit)
 {
     assert(file);
     assert(data);
 
-    char c;
+    char   c;
     size_t bytes = 0;
-    do {
+    do
+    {
         if (bytes >= data_bytes)
         {
             return -STATUS_NOMEM;
@@ -102,12 +108,13 @@ status_t fs_readuntil(file_t file, char *data, size_t data_bytes, char limit)
     return STATUS_OK;
 }
 
-status_t fs_write_str(file_t file, char *data)
+status_t
+fs_write_str (file_t file, char *data)
 {
     assert(file);
     assert(data);
 
-    int rc = fputs(data, (FILE *) file);
+    int rc = fputs(data, (FILE *)file);
     if (rc < 0)
     {
         ERROR("Error writing to file: %d", rc);
@@ -117,17 +124,19 @@ status_t fs_write_str(file_t file, char *data)
     return STATUS_OK;
 }
 
-void fs_rewind(file_t file)
+void
+fs_rewind (file_t file)
 {
     assert(file);
     rewind(file);
 }
 
-status_t fs_close(file_t file)
+status_t
+fs_close (file_t file)
 {
     assert(file);
 
-    int rc = fclose((FILE *) file);
+    int rc = fclose((FILE *)file);
     if (rc != 0)
     {
         ERROR("Error closing file: %d", rc);
@@ -137,12 +146,13 @@ status_t fs_close(file_t file)
     return STATUS_OK;
 }
 
-status_t fs_rm(const char *name)
+status_t
+fs_rm (const char *name)
 {
     assert(name);
 
     char path[64];
-    int rc = 0;
+    int  rc = 0;
 
     rc = snprintf(path, 64, "%s/%s", FS_BASE_PATH, name);
     if (rc > 64 || rc < 0)
@@ -161,14 +171,15 @@ status_t fs_rm(const char *name)
     return STATUS_OK;
 }
 
-bool fs_exists(const char *name)
+bool
+fs_exists (const char *name)
 {
     assert(name);
-    
-    int rc = 0;
+
+    int         rc = 0;
     struct stat st;
-    char path[64];
-    
+    char        path[64];
+
     rc = sprintf(path, "%s/%s", FS_BASE_PATH, name);
     if (rc > 64 || rc < 0)
     {

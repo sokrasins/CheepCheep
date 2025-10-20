@@ -17,12 +17,13 @@ status_t tag_sync_handler(msg_t *msg);
 // Open file with tags
 file_t tag_file = NULL;
 
-status_t tags_init(void)
+status_t
+tags_init (void)
 {
     status_t status;
 
     // Make sure a tag hash exists in nvstate
-    size_t hash_len = 0;
+    size_t  hash_len = 0;
     uint8_t tag_hash[TAG_HASH_LEN];
     status = nvstate_tag_hash(tag_hash, &hash_len);
     if ((status != STATUS_OK) || (hash_len != TAG_HASH_LEN))
@@ -38,7 +39,10 @@ status_t tags_init(void)
 
     // Init file system
     status = fs_init();
-    if (status != STATUS_OK) { return -STATUS_IO; }
+    if (status != STATUS_OK)
+    {
+        return -STATUS_IO;
+    }
 
     // If the file doesn't exist, create it
     if (!fs_exists(TAGS_FILENAME))
@@ -48,9 +52,12 @@ status_t tags_init(void)
     }
 
     tag_file = fs_open(TAGS_FILENAME, "r");
-    if (tag_file == NULL) { return -STATUS_NOFILE; }
+    if (tag_file == NULL)
+    {
+        return -STATUS_NOFILE;
+    }
 
-    // Here we check if the tag file is empty. If so, the hash is cleared so 
+    // Here we check if the tag file is empty. If so, the hash is cleared so
     // the sync message can populate the tags list here.
     char card_str[16];
     if (fs_readline(tag_file, card_str, 16) == -STATUS_EOF)
@@ -65,14 +72,15 @@ status_t tags_init(void)
     return client_handler_register(tag_sync_handler);
 }
 
-status_t tags_verify(uint32_t card)
+status_t
+tags_verify (uint32_t card)
 {
-    // Go line-by-line through the file, reading card data and comparing 
-    // against card. If EOF is reached before a match is found, no match 
+    // Go line-by-line through the file, reading card data and comparing
+    // against card. If EOF is reached before a match is found, no match
     // exists.
-    char card_str[16];
+    char     card_str[16];
     status_t status = fs_readline(tag_file, card_str, 16);
-    while (status != -STATUS_EOF) 
+    while (status != -STATUS_EOF)
     {
         uint32_t db_card = atoi(card_str);
         if (db_card == card)
@@ -88,7 +96,8 @@ status_t tags_verify(uint32_t card)
     return -STATUS_INVALID;
 }
 
-status_t tag_sync_handler(msg_t *msg)
+status_t
+tag_sync_handler (msg_t *msg)
 {
     assert(msg);
 
@@ -96,9 +105,9 @@ status_t tag_sync_handler(msg_t *msg)
     if (msg->type == MSG_SYNC)
     {
         // Get the existing hash
-        size_t hash_len;
+        size_t  hash_len;
         uint8_t cur_hash[TAG_HASH_LEN];
-        
+
         INFO("New authorized card list received");
         nvstate_tag_hash(cur_hash, &hash_len);
 
@@ -108,7 +117,7 @@ status_t tag_sync_handler(msg_t *msg)
             WARN("saving...");
             char file_line[16];
 
-            // Close and delete the old file. We'll create a new file and 
+            // Close and delete the old file. We'll create a new file and
             // rewrite it.
             fs_close(tag_file);
             fs_rm(TAGS_FILENAME);
@@ -116,16 +125,18 @@ status_t tag_sync_handler(msg_t *msg)
             if (new_file == NULL)
             {
                 ERROR("Couldn't save new cards");
-                return STATUS_OK; // Message handled, even though we couldn't save
+                return STATUS_OK; // Message handled, even though we couldn't
+                                  // save
             }
-    
-            // Parse the Received JSON. The tags are provided in an array, and 
+
+            // Parse the Received JSON. The tags are provided in an array, and
             // we can iterate over it.
             cJSON *tag;
             cJSON_ArrayForEach(tag, msg->sync.tags)
             {
                 // We're reformatting: each card is delimited with a line feed.
-                int len = snprintf(file_line, 16, "%d\n", atoi(tag->valuestring));
+                int len
+                    = snprintf(file_line, 16, "%d\n", atoi(tag->valuestring));
                 if (len > 16 || len < 0)
                 {
                     ERROR("Unexpected line length (%d): %s", len, file_line);

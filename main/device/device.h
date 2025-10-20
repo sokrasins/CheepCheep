@@ -5,7 +5,8 @@
 #include "device_interlock.h"
 #include "device_vending.h"
 
-static inline const device_t *device_get(device_type_t type)
+static inline const device_t *
+device_get (device_type_t type)
 {
     const device_t *device = NULL;
 

@@ -3,7 +3,7 @@
 
 #include "config_types.h"
 
-// Set default values for all config here. Any config not defined at the 
+// Set default values for all config here. Any config not defined at the
 // project level will take the value assigned here.
 
 #ifndef CONFIG_DEVICE_TYPE
@@ -199,7 +199,7 @@
 #endif /*CONFIG_PINS_LOCK*/
 
 #ifndef CONFIG_PINS_DOOR_SENSOR
-#define CONFIG_PINS_DOOR_SENSOR  12
+#define CONFIG_PINS_DOOR_SENSOR 12
 #endif /*CONFIG_PINS_DOOR_SENSOR*/
 
 #ifndef CONFIG_PINS_OUT1

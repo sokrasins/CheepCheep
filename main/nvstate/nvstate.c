@@ -11,10 +11,13 @@
 
 static nvs_handle_t _handle;
 
-status_t nvstate_init(void)
+status_t
+nvstate_init (void)
 {
     esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES
+        || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
         WARN("NVS doesn't have any free pages");
@@ -26,17 +29,20 @@ status_t nvstate_init(void)
     // Open NVS handle
     INFO("Opening Non-Volatile Storage (NVS) handle...");
     err = nvs_open("storage", NVS_READWRITE, &_handle);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ERROR("Error (%s) opening NVS handle!", esp_err_to_name(err));
         return -STATUS_IO;
     }
-    
+
     return STATUS_OK;
 }
 
-status_t nvstate_locked_out(bool *locked_out)
+status_t
+nvstate_locked_out (bool *locked_out)
 {
-    esp_err_t err = nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t *)locked_out);
+    esp_err_t err
+        = nvs_get_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t *)locked_out);
     if (err != ESP_OK)
     {
         ERROR("Couldn't get locked_out parameter: %s", esp_err_to_name(err));
@@ -45,9 +51,11 @@ status_t nvstate_locked_out(bool *locked_out)
     return STATUS_OK;
 }
 
-status_t nvstate_locked_out_set(bool locked_out)
+status_t
+nvstate_locked_out_set (bool locked_out)
 {
-    esp_err_t err = nvs_set_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t) locked_out); 
+    esp_err_t err
+        = nvs_set_u8(_handle, NVS_LOCKED_OUT_KEY, (uint8_t)locked_out);
     if (err != ESP_OK)
     {
         ERROR("Couldn't set locked_out parameter: %s", esp_err_to_name(err));
@@ -56,12 +64,14 @@ status_t nvstate_locked_out_set(bool locked_out)
     return STATUS_OK;
 }
 
-status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
+status_t
+nvstate_tag_hash (uint8_t *tag_hash, size_t *len)
 {
     assert(tag_hash);
 
     *len = TAG_HASH_LEN;
-    esp_err_t err = nvs_get_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
+    esp_err_t err
+        = nvs_get_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
     if (err != ESP_OK)
     {
         ERROR("Couldn't get tag_hash parameter: %s", esp_err_to_name(err));
@@ -70,11 +80,13 @@ status_t nvstate_tag_hash(uint8_t *tag_hash, size_t *len)
     return STATUS_OK;
 }
 
-status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
+status_t
+nvstate_tag_hash_set (uint8_t *tag_hash, size_t len)
 {
     assert(tag_hash);
 
-    esp_err_t err = nvs_set_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
+    esp_err_t err
+        = nvs_set_blob(_handle, NVS_TAG_HASH_KEY, (void *)tag_hash, len);
     if (err != ESP_OK)
     {
         ERROR("Couldn't set tag_hash parameter: %s", esp_err_to_name(err));
@@ -83,12 +95,14 @@ status_t nvstate_tag_hash_set(uint8_t *tag_hash, size_t len)
     return STATUS_OK;
 }
 
-status_t nvstate_config(config_t *config)
+status_t
+nvstate_config (config_t *config)
 {
     assert(config);
 
-    size_t bytes = sizeof(config_t);
-    esp_err_t err = nvs_get_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, &bytes);
+    size_t    bytes = sizeof(config_t);
+    esp_err_t err
+        = nvs_get_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, &bytes);
     if (err != ESP_OK)
     {
         ERROR("Couldn't get config parameter: %s", esp_err_to_name(err));
@@ -97,11 +111,13 @@ status_t nvstate_config(config_t *config)
     return STATUS_OK;
 }
 
-status_t nvstate_config_set(const config_t *config)
+status_t
+nvstate_config_set (const config_t *config)
 {
     assert(config);
 
-    esp_err_t err = nvs_set_blob(_handle, NVS_TAG_CONFIG_KEY, (void *)config, sizeof(config_t));
+    esp_err_t err = nvs_set_blob(
+        _handle, NVS_TAG_CONFIG_KEY, (void *)config, sizeof(config_t));
     if (err != ESP_OK)
     {
         ERROR("Couldn't set config parameter: %s", esp_err_to_name(err));

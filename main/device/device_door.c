@@ -13,51 +13,53 @@
 #include <assert.h>
 
 // Task config
-#define DOOR_TASK_NAME          "Door_Task"
-#define DOOR_TASK_STACK_SIZE    4096U
-#define DOOR_TASK_PRIO          2U
-static StackType_t door_stack[DOOR_TASK_STACK_SIZE];
+#define DOOR_TASK_NAME       "Door_Task"
+#define DOOR_TASK_STACK_SIZE 4096U
+#define DOOR_TASK_PRIO       2U
+static StackType_t  door_stack[DOOR_TASK_STACK_SIZE];
 static StaticTask_t door_task_buf;
 
-#define DOOR_TASK_SLEEP 100 //ms
+#define DOOR_TASK_SLEEP 100 // ms
 
-typedef struct {
+typedef struct
+{
     const config_general_t *config;
-    bool prev_door_open_state;
-    bool unlock_door;
-    int64_t time_opened;
-    int64_t time_unlocked;
-    uint32_t last_card_id; // TODO: debounce reads
-    wieg_evt_handle_t evt_handle;
+    bool                    prev_door_open_state;
+    bool                    unlock_door;
+    int64_t                 time_opened;
+    int64_t                 time_unlocked;
+    uint32_t                last_card_id; // TODO: debounce reads
+    wieg_evt_handle_t       evt_handle;
 } door_ctx_t;
 
 // Private
-void door_task(void *params);
+void            door_task(void *params);
 static status_t door_init(const config_t *config);
 static status_t door_deinit(void);
-static void lock_door(void);
-static void unlock_door(void);
+static void     lock_door(void);
+static void     unlock_door(void);
 static status_t client_cmd_handler(msg_t *msg);
-static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
+static void     door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx);
 
 static door_ctx_t _ctx = {
     .prev_door_open_state = false,
-    .time_opened = 0,
-    .time_unlocked = 0,
-    .last_card_id = 0,
+    .time_opened          = 0,
+    .time_unlocked        = 0,
+    .last_card_id         = 0,
 };
 
 const device_t door = {
-    .init = door_init,
+    .init   = door_init,
     .deinit = door_deinit,
 };
 
-status_t door_init(const config_t *config)
+status_t
+door_init (const config_t *config)
 {
     assert(config);
 
     status_t status;
-    
+
     // Make sure a lockout state exists in nvstate
     bool locked_out;
     status = nvstate_locked_out(&locked_out);
@@ -73,33 +75,34 @@ status_t door_init(const config_t *config)
 
     signal_init(&config->buzzer);
 
-    _ctx.config = &config->general;
-    _ctx.evt_handle = wieg_evt_handler_reg(WIEG_EVT_NEWCARD, door_handle_swipe, (void *)&_ctx);
+    _ctx.config     = &config->general;
+    _ctx.evt_handle = wieg_evt_handler_reg(
+        WIEG_EVT_NEWCARD, door_handle_swipe, (void *)&_ctx);
 
     // Register cb for server requests
     client_handler_register(client_cmd_handler);
 
-    xTaskCreateStatic(
-        door_task, 
-        DOOR_TASK_NAME, 
-        DOOR_TASK_STACK_SIZE, 
-        (void *)&_ctx, 
-        DOOR_TASK_PRIO, 
-        door_stack,
-        &door_task_buf
-    );
-    
+    xTaskCreateStatic(door_task,
+                      DOOR_TASK_NAME,
+                      DOOR_TASK_STACK_SIZE,
+                      (void *)&_ctx,
+                      DOOR_TASK_PRIO,
+                      door_stack,
+                      &door_task_buf);
+
     return STATUS_OK;
 }
 
-static status_t door_deinit(void)
+static status_t
+door_deinit (void)
 {
     return STATUS_OK;
 }
 
-static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
+static void
+door_handle_swipe (wieg_evt_t event, card_t *card, void *ctx)
 {
-    door_ctx_t *door_ctx = (door_ctx_t *) ctx;
+    door_ctx_t *door_ctx = (door_ctx_t *)ctx;
 
     WARN("New card: %lu", card->raw);
     INFO("    facility: 0x%hx", card->facility);
@@ -118,7 +121,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
         {
             // If "locked out", don't open the door even if the card is good
             msg_t msg = {
-                .type = MSG_ACCESS_LOCKED_OUT,
+                .type                   = MSG_ACCESS_LOCKED_OUT,
                 .access_lockout.card_id = card->raw,
             };
             client_send_msg(&msg);
@@ -128,7 +131,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
         {
             // Open the door
             msg_t msg = {
-                .type = MSG_ACCESS_GRANTED,
+                .type                   = MSG_ACCESS_GRANTED,
                 .access_granted.card_id = card->raw,
             };
             client_send_msg(&msg);
@@ -140,7 +143,7 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
         // Couldn't match card in database, don't unlock
         WARN("Access denied");
         msg_t msg = {
-            .type = MSG_ACCESS_DENIED,
+            .type                  = MSG_ACCESS_DENIED,
             .access_denied.card_id = card->raw,
         };
         client_send_msg(&msg);
@@ -148,17 +151,18 @@ static void door_handle_swipe(wieg_evt_t event, card_t *card, void *ctx)
     }
 
     // Store the last card
-    // TODO: This field is currently unused. Either use to debounce, or don't 
+    // TODO: This field is currently unused. Either use to debounce, or don't
     // track.
     _ctx.last_card_id = card->raw;
 }
 
-void door_task(void *params)
+void
+door_task (void *params)
 {
     assert(params);
 
-    door_ctx_t *ctx = (door_ctx_t *) params;
-    while(true)
+    door_ctx_t *ctx = (door_ctx_t *)params;
+    while (true)
     {
         // If requested, unlock the door
         if (ctx->unlock_door)
@@ -168,9 +172,10 @@ void door_task(void *params)
         }
 
         // If door sensor is not enabled, close door after fixed time
-        if(!ctx->config->door_sensor_enabled && ctx->time_unlocked != 0)
+        if (!ctx->config->door_sensor_enabled && ctx->time_unlocked != 0)
         {
-            if ((uptime() - ctx->time_unlocked) >= (_ctx.config->fixed_unlock_delay * 1000))
+            if ((uptime() - ctx->time_unlocked)
+                >= (_ctx.config->fixed_unlock_delay * 1000))
             {
                 lock_door();
             }
@@ -185,10 +190,10 @@ void door_task(void *params)
             {
                 continue;
             }
-            bool cur_door_state = (bool) rc;
-            
+            bool cur_door_state = (bool)rc;
+
             // Check if the door has opened or closed
-            if (ctx->prev_door_open_state != cur_door_state) 
+            if (ctx->prev_door_open_state != cur_door_state)
             {
                 ctx->prev_door_open_state = cur_door_state;
                 INFO("Door sensor state changed to %u", cur_door_state);
@@ -204,10 +209,12 @@ void door_task(void *params)
                 }
             }
 
-            // If the door was unlocked, check to make sure the door is actually opened
+            // If the door was unlocked, check to make sure the door is actually
+            // opened
             if (ctx->time_unlocked != 0)
             {
-                if ((uptime() - ctx->time_unlocked) >= (ctx->config->door_sensor_timeout * 1000))
+                if ((uptime() - ctx->time_unlocked)
+                    >= (ctx->config->door_sensor_timeout * 1000))
                 {
                     // If the door never opens, lock it again
                     INFO("Door sensor timeout! Locking again.");
@@ -222,22 +229,26 @@ void door_task(void *params)
                 }
             }
 
-            // If there's a timeout for the open door, check how long it's been opened
-            if (ctx->config->door_open_alarm_timeout != 0 && ctx->time_opened != 0)
+            // If there's a timeout for the open door, check how long it's been
+            // opened
+            if (ctx->config->door_open_alarm_timeout != 0
+                && ctx->time_opened != 0)
             {
-                if (uptime() - ctx->time_opened >= (ctx->config->door_open_alarm_timeout * 1000))
+                if (uptime() - ctx->time_opened
+                    >= (ctx->config->door_open_alarm_timeout * 1000))
                 {
                     WARN("Door left open alarm!");
                     gpio_out_set(OUTPUT_READER_BUZZER, true);
                 }
             }
         }
-        
+
         vTaskDelay(pdMS_TO_TICKS(DOOR_TASK_SLEEP));
     }
 }
 
-static void lock_door(void)
+static void
+lock_door (void)
 {
     gpio_out_set(OUTPUT_LOCK, false);
     gpio_out_set(OUTPUT_RELAY, false);
@@ -245,7 +256,8 @@ static void lock_door(void)
     WARN("Locked!");
 }
 
-static void unlock_door(void)
+static void
+unlock_door (void)
 {
     gpio_out_set(OUTPUT_LOCK, true);
     gpio_out_set(OUTPUT_RELAY, true);
@@ -255,7 +267,8 @@ static void unlock_door(void)
     _ctx.time_unlocked = uptime();
 }
 
-static status_t client_cmd_handler(msg_t *msg)
+static status_t
+client_cmd_handler (msg_t *msg)
 {
     status_t status = -STATUS_UNAVAILABLE;
 
@@ -263,7 +276,7 @@ static status_t client_cmd_handler(msg_t *msg)
     {
         WARN("Door bumped!");
         _ctx.unlock_door = true;
-        status = STATUS_OK;
+        status           = STATUS_OK;
     }
     if (msg->type == MSG_UNLOCK)
     {

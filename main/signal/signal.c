@@ -7,52 +7,51 @@
 #include <assert.h>
 
 // Event flags
-#define SIGNAL_OK_FLAG          (1<<0)
-#define SIGNAL_ALERT_FLAG       (1<<1)
-#define SIGNAL_CARDREAD_FLAG    (1<<2)
-#define SIGNAL_ACTION_FLAG      (1<<3)
+#define SIGNAL_OK_FLAG       (1 << 0)
+#define SIGNAL_ALERT_FLAG    (1 << 1)
+#define SIGNAL_CARDREAD_FLAG (1 << 2)
+#define SIGNAL_ACTION_FLAG   (1 << 3)
 
 // Signal timing
-#define SIGNAL_OK_TIME          1000U //ms
-#define SIGNAL_ALERT_TIME       300U //ms
-#define SIGNAL_CARDREAD_TIME    200U //ms
+#define SIGNAL_OK_TIME       1000U // ms
+#define SIGNAL_ALERT_TIME    300U  // ms
+#define SIGNAL_CARDREAD_TIME 200U  // ms
 
 // Task config
-#define SIGNAL_TASK_NAME        "Signal_Task"
-#define SIGNAL_TASK_STACK_SIZE  1024U
-#define SIGNAL_TASK_PRIO        2U
-static StackType_t signal_stack[SIGNAL_TASK_STACK_SIZE];
+#define SIGNAL_TASK_NAME       "Signal_Task"
+#define SIGNAL_TASK_STACK_SIZE 1024U
+#define SIGNAL_TASK_PRIO       2U
+static StackType_t  signal_stack[SIGNAL_TASK_STACK_SIZE];
 static StaticTask_t signal_task_buf;
-
 
 // Helpers
 void signal_task(void *params);
 
 // Local state
-static TaskHandle_t _signal_task_handle = NULL;
+static TaskHandle_t    _signal_task_handle = NULL;
 const config_buzzer_t *_config;
 
-status_t signal_init(const config_buzzer_t *config)
+status_t
+signal_init (const config_buzzer_t *config)
 {
     assert(config);
     _config = config;
 
-    // Most of these signals involve seconds of waiting. We handle these in 
+    // Most of these signals involve seconds of waiting. We handle these in
     // it's own task.
-    _signal_task_handle = xTaskCreateStatic(
-        signal_task, 
-        SIGNAL_TASK_NAME, 
-        SIGNAL_TASK_STACK_SIZE, 
-        NULL, 
-        SIGNAL_TASK_PRIO,
-        signal_stack, 
-        &signal_task_buf
-    );
-    
+    _signal_task_handle = xTaskCreateStatic(signal_task,
+                                            SIGNAL_TASK_NAME,
+                                            SIGNAL_TASK_STACK_SIZE,
+                                            NULL,
+                                            SIGNAL_TASK_PRIO,
+                                            signal_stack,
+                                            &signal_task_buf);
+
     return STATUS_OK;
 }
 
-void signal_alert(void)
+void
+signal_alert (void)
 {
     if (_config->enabled)
     {
@@ -60,7 +59,8 @@ void signal_alert(void)
     }
 }
 
-void signal_ok(void)
+void
+signal_ok (void)
 {
     if (_config->enabled)
     {
@@ -68,7 +68,8 @@ void signal_ok(void)
     }
 }
 
-void signal_cardread(void)
+void
+signal_cardread (void)
 {
     if (_config->enabled && _config->buzz_on_swipe)
     {
@@ -76,7 +77,8 @@ void signal_cardread(void)
     }
 }
 
-void signal_action(void)
+void
+signal_action (void)
 {
     if (_config->enabled)
     {
@@ -84,14 +86,15 @@ void signal_action(void)
     }
 }
 
-void signal_task(void *params)
+void
+signal_task (void *params)
 {
-    while(1)
+    while (1)
     {
         uint32_t flags = 0;
-        if(xTaskNotifyWait(0x00, 0xFFFFFFFF, &flags, portMAX_DELAY) == pdPASS)
+        if (xTaskNotifyWait(0x00, 0xFFFFFFFF, &flags, portMAX_DELAY) == pdPASS)
         {
-            if(flags & SIGNAL_OK_FLAG)
+            if (flags & SIGNAL_OK_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);
                 vTaskDelay(pdMS_TO_TICKS(SIGNAL_OK_TIME));
@@ -99,7 +102,7 @@ void signal_task(void *params)
                 gpio_out_set(OUTPUT_READER_BUZZER, false);
             }
 
-            if(flags & SIGNAL_ALERT_FLAG)
+            if (flags & SIGNAL_ALERT_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);
                 gpio_out_set(OUTPUT_READER_LED, true);
@@ -123,12 +126,12 @@ void signal_task(void *params)
                 vTaskDelay(pdMS_TO_TICKS(SIGNAL_CARDREAD_TIME));
                 gpio_out_set(OUTPUT_READER_BUZZER, false);
             }
-            
+
             if (flags & SIGNAL_ACTION_FLAG)
             {
                 gpio_out_set(OUTPUT_READER_BUZZER, true);
                 vTaskDelay(pdMS_TO_TICKS(_config->action_delay * 1000));
-                gpio_out_set(OUTPUT_READER_BUZZER, false);   
+                gpio_out_set(OUTPUT_READER_BUZZER, false);
             }
         }
     }

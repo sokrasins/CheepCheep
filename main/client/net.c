@@ -7,32 +7,34 @@
 
 #include "esp_wifi.h"
 
-#define WIFI_RETRIES            5U
-#define NET_EVT_HANDLERS_NUM    10
+#define WIFI_RETRIES         5U
+#define NET_EVT_HANDLERS_NUM 10
 
-#define WIFI_CONNECTED_BIT      BIT0
-#define WIFI_DISCONNECTED_BIT   BIT1
+#define WIFI_CONNECTED_BIT    BIT0
+#define WIFI_DISCONNECTED_BIT BIT1
 
 // Task config
-#define NET_TASK_NAME           "Net_Task"
-#define NET_TASK_STACK_SIZE     4096U
-#define NET_TASK_PRIO           3U
-static StackType_t net_stack[NET_TASK_STACK_SIZE];
+#define NET_TASK_NAME       "Net_Task"
+#define NET_TASK_STACK_SIZE 4096U
+#define NET_TASK_PRIO       3U
+static StackType_t  net_stack[NET_TASK_STACK_SIZE];
 static StaticTask_t net_task_buf;
 
-typedef struct {
-    net_evt_t evt;
-    void *ctx;
+typedef struct
+{
+    net_evt_t    evt;
+    void        *ctx;
     net_evt_cb_t cb;
 } net_evt_handler_t;
 
-typedef struct {
-    net_evt_handler_t handlers[NET_EVT_HANDLERS_NUM];
+typedef struct
+{
+    net_evt_handler_t       handlers[NET_EVT_HANDLERS_NUM];
     const config_network_t *config;
-    EventGroupHandle_t wifi_event_group;
-    int retry_num;
-    esp_ip4_addr_t ip;
-    TaskHandle_t net_task_handle;
+    EventGroupHandle_t      wifi_event_group;
+    int                     retry_num;
+    esp_ip4_addr_t          ip;
+    TaskHandle_t            net_task_handle;
 } net_ctx_t;
 
 static net_ctx_t _ctx = {
@@ -40,9 +42,13 @@ static net_ctx_t _ctx = {
 };
 
 static void net_task(void *params);
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+static void event_handler(void            *arg,
+                          esp_event_base_t event_base,
+                          int32_t          event_id,
+                          void            *event_data);
 
-status_t net_init(const config_network_t *config)
+status_t
+net_init (const config_network_t *config)
 {
     assert(config);
     esp_err_t err;
@@ -58,10 +64,10 @@ status_t net_init(const config_network_t *config)
         return -STATUS_BAD_CONFIG;
     }
 
-    _ctx.config = config;
+    _ctx.config           = config;
     _ctx.wifi_event_group = xEventGroupCreate();
 
-    for (int i=0; i<NET_EVT_HANDLERS_NUM; i++)
+    for (int i = 0; i < NET_EVT_HANDLERS_NUM; i++)
     {
         _ctx.handlers[i].cb = NULL;
     }
@@ -73,7 +79,7 @@ status_t net_init(const config_network_t *config)
 
     // Set up the itf
     err = esp_netif_init();
-    if (err != ESP_OK) 
+    if (err != ESP_OK)
     {
         ERROR("Can't initialize netif: %s", esp_err_to_name(err));
         return -STATUS_IO;
@@ -83,43 +89,39 @@ status_t net_init(const config_network_t *config)
     if (err != ESP_OK)
     {
         ERROR("Can't create event loop: %s", esp_err_to_name(err));
-        if (err != ESP_ERR_INVALID_STATE) { return -STATUS_IO; };
+        if (err != ESP_ERR_INVALID_STATE)
+        {
+            return -STATUS_IO;
+        };
     }
 
     // Call will assert if misconfigured
     esp_netif_create_default_wifi_sta();
-    
+
     // Start wifi
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
-    err = esp_wifi_init(&wifi_initiation);
-    if (err != ESP_OK) 
+    err                                = esp_wifi_init(&wifi_initiation);
+    if (err != ESP_OK)
     {
         ERROR("Can't initialize wifi: %s", esp_err_to_name(err));
         return -STATUS_IO;
     }
 
     // Run net task, ready to handle network state changes
-    _ctx.net_task_handle = xTaskCreateStatic(
-        net_task, 
-        NET_TASK_NAME, 
-        NET_TASK_STACK_SIZE, 
-        (void *)&_ctx,
-        NET_TASK_PRIO, 
-        net_stack,
-        &net_task_buf
-    );
+    _ctx.net_task_handle = xTaskCreateStatic(net_task,
+                                             NET_TASK_NAME,
+                                             NET_TASK_STACK_SIZE,
+                                             (void *)&_ctx,
+                                             NET_TASK_PRIO,
+                                             net_stack,
+                                             &net_task_buf);
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
 
     // Register our event handler
     err = esp_event_handler_instance_register(
-        WIFI_EVENT,
-        ESP_EVENT_ANY_ID,
-        &event_handler,
-        NULL,
-        &instance_any_id
-    );
+        WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id);
     if (err != ESP_OK)
     {
         ERROR("Can't register wifi event handler: %s", esp_err_to_name(err));
@@ -127,12 +129,7 @@ status_t net_init(const config_network_t *config)
     }
 
     err = esp_event_handler_instance_register(
-        IP_EVENT,
-        IP_EVENT_STA_GOT_IP,
-        &event_handler,
-        NULL,
-        &instance_got_ip
-    );
+        IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip);
     if (err != ESP_OK)
     {
         ERROR("Can't register ip event handler: %s", esp_err_to_name(err));
@@ -148,24 +145,34 @@ status_t net_init(const config_network_t *config)
             .sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK,
         },
     };
-    memcpy(wifi_config.sta.ssid, _ctx.config->wifi_ssid, strlen(_ctx.config->wifi_ssid));
-    memcpy(wifi_config.sta.password, _ctx.config->wifi_pass, strlen(_ctx.config->wifi_pass));
+    memcpy(wifi_config.sta.ssid,
+           _ctx.config->wifi_ssid,
+           strlen(_ctx.config->wifi_ssid));
+    memcpy(wifi_config.sta.password,
+           _ctx.config->wifi_pass,
+           strlen(_ctx.config->wifi_pass));
 
     // Set wifi params from config
     int pow = _ctx.config->wifi_power;
-    if (pow < 2) 
-    { 
-        WARN("Wifi power set below min power (set: %d dBm, min: 2 dBm). Setting 2 dBm.", pow);
+    if (pow < 2)
+    {
+        WARN(
+            "Wifi power set below min power (set: %d dBm, min: 2 dBm). Setting "
+            "2 dBm.",
+            pow);
         pow = 2;
     }
-    if (pow > 20) 
-    { 
-        WARN("Wifi power set above max power (set: %d dBm, max: 20 dBm). Setting 20 dBm.", pow);
+    if (pow > 20)
+    {
+        WARN(
+            "Wifi power set above max power (set: %d dBm, max: 20 dBm). "
+            "Setting 20 dBm.",
+            pow);
         pow = 20;
     }
     esp_wifi_set_max_tx_power(pow * 4); // power units are 0.25 dBm
     esp_wifi_set_country_code(_ctx.config->wifi_country_code, true);
-    
+
     // Configure wifi
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
@@ -175,20 +182,15 @@ status_t net_init(const config_network_t *config)
     return STATUS_OK;
 }
 
-status_t net_deinit(void)
+status_t
+net_deinit (void)
 {
     vTaskDelete(_ctx.net_task_handle);
 
     esp_event_handler_instance_unregister(
-        WIFI_EVENT,
-        ESP_EVENT_ANY_ID,
-        &event_handler
-    );
+        WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler);
     esp_event_handler_instance_unregister(
-        IP_EVENT,
-        IP_EVENT_STA_GOT_IP,
-        &event_handler
-    );
+        IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler);
 
     xTaskCreate(net_task, "Net_Task", 4096, (void *)&_ctx, 3, NULL);
 
@@ -203,69 +205,77 @@ status_t net_deinit(void)
     return STATUS_OK;
 }
 
-status_t net_start(void)
-{   
+status_t
+net_start (void)
+{
     // Start wifi
     esp_wifi_start();
 
-    return STATUS_OK; 
+    return STATUS_OK;
 }
 
-status_t net_stop(void)
+status_t
+net_stop (void)
 {
     esp_wifi_stop();
     return STATUS_OK;
 }
 
-net_evt_handle_t net_evt_cb_register(net_evt_t evt, void *ctx, net_evt_cb_t cb)
+net_evt_handle_t
+net_evt_cb_register (net_evt_t evt, void *ctx, net_evt_cb_t cb)
 {
-    for (int i=0; i<NET_EVT_HANDLERS_NUM; i++)
+    for (int i = 0; i < NET_EVT_HANDLERS_NUM; i++)
     {
         net_evt_handler_t *handler = &_ctx.handlers[i];
         if (handler->cb == NULL)
         {
             handler->evt = evt;
             handler->ctx = ctx;
-            handler->cb = cb;
-            return (net_evt_handle_t) handler;
+            handler->cb  = cb;
+            return (net_evt_handle_t)handler;
         }
     }
     return NULL;
 }
 
-void net_evt_cb_deregister(net_evt_handle_t handle)
+void
+net_evt_cb_deregister (net_evt_handle_t handle)
 {
-    net_evt_handler_t *handler = (net_evt_handler_t *) handle;
-    handler->cb = NULL;
+    net_evt_handler_t *handler = (net_evt_handler_t *)handle;
+    handler->cb                = NULL;
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
+static void
+event_handler (void            *arg,
+               esp_event_base_t event_base,
+               int32_t          event_id,
+               void            *event_data)
 {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) 
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
         INFO("STA START");
         esp_wifi_connect();
-    } 
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) 
+    }
+    else if (event_base == WIFI_EVENT
+             && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        if (_ctx.retry_num < WIFI_RETRIES) 
+        if (_ctx.retry_num < WIFI_RETRIES)
         {
             esp_wifi_connect();
             _ctx.retry_num++;
             INFO("retry to connect to the AP");
-        } 
-        else 
+        }
+        else
         {
             INFO("STA_DISCONNECTED");
             _ctx.retry_num = 0;
             xEventGroupSetBits(_ctx.wifi_event_group, WIFI_DISCONNECTED_BIT);
         }
         INFO("connect to the AP fail");
-    } 
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) 
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         INFO("IP address assigned: " IPSTR, IP2STR(&event->ip_info.ip));
         memcpy(&_ctx.ip, &event->ip_info.ip, sizeof(_ctx.ip));
         _ctx.retry_num = 0;
@@ -273,27 +283,28 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-static void net_task(void *params)
+static void
+net_task (void *params)
 {
-    net_ctx_t *ctx = (net_ctx_t *) params;
+    net_ctx_t *ctx = (net_ctx_t *)params;
     while (1)
     {
-        // Waiting until either the connection is established (WIFI_CONNECTED_BIT) 
-        // or connection failed for the maximum number of re-tries (WIFI_FAIL_BIT). 
-        // The bits are set by event_handler() (see above)
-        EventBits_t bits = xEventGroupWaitBits(
-            ctx->wifi_event_group,
-            WIFI_CONNECTED_BIT | WIFI_DISCONNECTED_BIT,
-            pdTRUE,
-            pdFALSE,
-            portMAX_DELAY
-        );
+        // Waiting until either the connection is established
+        // (WIFI_CONNECTED_BIT) or connection failed for the maximum number of
+        // re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see
+        // above)
+        EventBits_t bits
+            = xEventGroupWaitBits(ctx->wifi_event_group,
+                                  WIFI_CONNECTED_BIT | WIFI_DISCONNECTED_BIT,
+                                  pdTRUE,
+                                  pdFALSE,
+                                  portMAX_DELAY);
 
-        if(bits & WIFI_CONNECTED_BIT)
+        if (bits & WIFI_CONNECTED_BIT)
         {
             INFO("connected to ap SSID: %s", ctx->config->wifi_ssid);
 
-            for (int i=0; i<NET_EVT_HANDLERS_NUM; i++)
+            for (int i = 0; i < NET_EVT_HANDLERS_NUM; i++)
             {
                 net_evt_handler_t *handler = &ctx->handlers[i];
                 if (handler->evt == NET_EVT_CONNECT && handler->cb != NULL)
@@ -307,7 +318,7 @@ static void net_task(void *params)
         {
             ERROR("Failed to connect to SSID: %s", ctx->config->wifi_ssid);
 
-            for (int i=0; i<NET_EVT_HANDLERS_NUM; i++)
+            for (int i = 0; i < NET_EVT_HANDLERS_NUM; i++)
             {
                 net_evt_handler_t *handler = &ctx->handlers[i];
                 if (handler->evt == NET_EVT_DISCONNECT && handler->cb != NULL)
@@ -316,18 +327,20 @@ static void net_task(void *params)
                 }
             }
 
-            // Try to reconnect 
+            // Try to reconnect
             esp_wifi_connect();
         }
     }
 }
 
-void net_get_mac(uint8_t *mac)
+void
+net_get_mac (uint8_t *mac)
 {
     esp_wifi_get_mac(WIFI_IF_STA, mac);
 }
 
-uint32_t net_get_ip(void)
+uint32_t
+net_get_ip (void)
 {
     return _ctx.ip.addr;
 }
