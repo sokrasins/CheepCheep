@@ -133,6 +133,7 @@ void app_main(void)
 
         // Check to make sure our heap is okay
         heap_size = xPortGetMinimumEverFreeHeapSize();
+        INFO("Heap watermark: %u", heap_size);
         if (heap_size < HEAP_RESET_THRESHOLD)
         {
             ERROR(

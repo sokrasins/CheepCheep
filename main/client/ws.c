@@ -220,6 +220,13 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
         // TODO: event here
         // this is sent from the server when the device successfully 
         // connects, but isn't authorized.
+        //
+        // Also, the websocket will be closed after 24 hours. At that point, we 
+        // need a manual reconnect.
+        if (_ctx.handler.cb != NULL)
+        {
+            _ctx.handler.cb(WS_FINISH, msg, _ctx.handler.ctx);
+        }
         break;
     }
 }

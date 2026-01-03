@@ -7,6 +7,7 @@
 typedef enum {
     WS_OPEN,
     WS_CLOSE,
+    WS_FINISH,
     WS_MSG,
 } ws_evt_t;
 

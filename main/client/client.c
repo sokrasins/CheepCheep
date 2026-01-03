@@ -251,6 +251,13 @@ void ws_evt_cb(ws_evt_t evt, cJSON *data, void *ctx)
             }
             break;
         }
+        
+        case WS_FINISH:
+            // The websocket was closed intentionally by the server. The 
+            // connection will not autoreconnect. We have to tell it to do so 
+            // here.
+            // TODO: How to start the webscoket back up
+
     }
 }
 
