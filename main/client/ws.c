@@ -48,6 +48,7 @@ status_t ws_init(char *url)
         .network_timeout_ms = 10000,        // Default
         .ping_interval_sec = 0xFFFFFFFF,    // Disable the automated ping, the server expects a client-level ping-pong
         .task_stack = (8*1024),             // Bigger stack, default is (4*1024)
+        .buffer_size = 2048,
     };
 
     _ctx.client = esp_websocket_client_init(&ws_cfg);
