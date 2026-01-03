@@ -123,6 +123,7 @@ status_t msg_to_cJSON(msg_t *msg, cJSON *json)
 
 status_t msg_from_cJSON(cJSON *json, msg_t *msg)
 {
+    INFO("Parsing JSON message");
     // the "authorised" message has a different format, try to parse it first
     if (cJSON_HasObjectItem(json, "authorised"))
     { 

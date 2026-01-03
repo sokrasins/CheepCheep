@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#define WS_MAX_LEN 2048U // bytes
+
 typedef struct {
     ws_evt_cb_t cb;
     void *ctx;
@@ -27,7 +29,10 @@ typedef struct {
 static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
 static ws_ctx_t _ctx;
-static cJSON *msg;
+//static cJSON *msg = NULL;
+
+static char *msg_bytes = NULL;
+static size_t msg_len = 0;
 
 status_t ws_init(char *url)
 {
@@ -48,6 +53,7 @@ status_t ws_init(char *url)
         .network_timeout_ms = 10000,        // Default
         .ping_interval_sec = 0xFFFFFFFF,    // Disable the automated ping, the server expects a client-level ping-pong
         .task_stack = (8*1024),             // Bigger stack, default is (4*1024)
+        .buffer_size = 2048,                // Bigger message buffer
     };
 
     _ctx.client = esp_websocket_client_init(&ws_cfg);
@@ -186,21 +192,81 @@ static void ws_evt_cb(void *handler_args, esp_event_base_t base, int32_t event_i
             INFO("<-- %.*s", data->data_len, (char *)data->data_ptr);
         }
 
-        // Try to parse a json payload. If we succeed, then send it to be 
-        // parsed further.
-        // TODO: msg is static so that we can make sure it got deleted before 
-        // we allocate new json mem. I think this is not necessary. Examine 
-        // this with heap trace.
-        if (msg != NULL) { cJSON_Delete(msg); }
-        msg = cJSON_Parse(data->data_ptr);
+        // This message is either:
+        // 1. The start of a new message, or
+        // 2. the continuation of a fragmented message
+        if (msg_bytes == NULL)
+        {
+            // Handle case 1. If we don't have a message buffer, make one.
+            msg_bytes = calloc(WS_MAX_LEN, sizeof(uint8_t));
+            msg_len = 0;
+        }
+        else
+        {
+            // Handle case 2. We need buffer space for more message, so 
+            // embiggen our existing buffer
+            // TODO: What's a realistic limit here? There should be a 
+            // deterministic upper-bound
+            msg_bytes = realloc(msg_bytes, msg_len + WS_MAX_LEN);
+            if (msg_bytes == NULL)
+            {
+                ERROR("Unable to allocate larger buffer for JSON fragment");
+            }
+        }
+
+        // Copy message into the working buffer
+        memcpy(&msg_bytes[msg_len], data->data_ptr, data->data_len);
+
+        // Try to parse a json payload. 
+        // If we succeed, then send it to be parsed further. 
+        // If we fail, triage.
+        cJSON *msg = cJSON_Parse(msg_bytes);
         if (msg) 
         {
+            // Send message to the client
+            INFO("Websocket message parsed");
             if (_ctx.handler.cb != NULL)
             {
                 _ctx.handler.cb(WS_MSG, msg, _ctx.handler.ctx);
             }
+
+            // Throw away json memory
             cJSON_Delete(msg);
             msg = NULL;
+
+            // Throw away raw binary memory
+            free(msg_bytes);
+            msg_bytes = NULL;
+            msg_len = 0;
+        }
+        else
+        {
+            // Check where the parsing error occurred
+            uint32_t err_idx = (uint32_t)cJSON_GetErrorPtr() - (uint32_t)msg_bytes;
+
+            if (data->data_len == WS_MAX_LEN && err_idx == data->data_len)
+            {
+                // If the message length is the max size from the websocket, 
+                // AND the parsing error is at the end of the message, we think 
+                // we're looking at a fragmented message. In this case, we'll 
+                // retain the data we collected and wait for a new message.
+                WARN("Fragmented message detected, waiting for next packet");
+                msg_len += WS_MAX_LEN;
+            }
+            else
+            {
+                // Otherwise, the data is just corrupt. 
+                // TODO: We could additionally try to parse JUST the new message.
+                ERROR("Fail to parse JSON");
+                ERROR("    json len: %d", data->data_len);
+                ERROR("    error offset: %ld", err_idx);
+
+                // Throw away raw binary memory
+                msg_len = 0;
+                free(msg_bytes);
+                msg_bytes = NULL;
+            }
+
         }
         break;
 
