@@ -17,6 +17,12 @@
 #define HTTP_CLIENT_TIMEOUT 5000 // ms
 #define DFU_BUFFSIZE        1024
 
+// TODO: DFU improvements
+// - Require valid certificate by server
+// - Option of some kind of non-static DFU endpoint
+//   - Device request with a uid
+//   - Receive response with a specific DFU URL endpoint
+
 typedef struct
 {
     TaskHandle_t        dfu_task_handle;
